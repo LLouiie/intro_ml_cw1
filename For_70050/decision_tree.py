@@ -78,6 +78,9 @@ class Node:
     left: Optional["Node"] = None
     right: Optional["Node"] = None
     prediction: Optional[int] = None
+    # for visualization
+    num_samples: Optional[int] = None
+    impurity: Optional[float] = None
 
 
 class DecisionTreeClassifier:
@@ -87,8 +90,11 @@ class DecisionTreeClassifier:
         self.max_depth = max_depth
         self.min_samples_split = max(2, int(min_samples_split))
         self.root: Optional[Node] = None
+        # Track how often each feature is used for splitting
+        self.split_counts_: Optional[np.ndarray] = None
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "DecisionTreeClassifier":
+        self.split_counts_ = np.zeros(X.shape[1], dtype=int)
         self.root = self._build_tree(X, y, depth=0)
         return self
 
@@ -106,9 +112,11 @@ class DecisionTreeClassifier:
     def _build_tree(self, X: np.ndarray, y: np.ndarray, depth: int) -> Node:
         node = Node()
         num_samples, num_features = X.shape
+        node.num_samples = int(num_samples)
+        node.impurity = float(entropy(y))
 
         # Stopping criteria
-        if depth >= self.max_depth or num_samples < self.min_samples_split or entropy(y) == 0.0:
+        if depth >= self.max_depth or num_samples < self.min_samples_split or node.impurity == 0.0:
             node.prediction = self._most_common_label(y)
             return node
 
@@ -136,6 +144,8 @@ class DecisionTreeClassifier:
 
         node.feature = int(best_feat)
         node.threshold = float(best_thr)
+        if self.split_counts_ is not None:
+            self.split_counts_[best_feat] += 1
         node.left = self._build_tree(X[left_mask], y[left_mask], depth + 1)
         node.right = self._build_tree(X[right_mask], y[right_mask], depth + 1)
         return node

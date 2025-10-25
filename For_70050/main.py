@@ -9,6 +9,12 @@ import numpy as np
 
 from decision_tree import DecisionTreeClassifier
 from metrics import accuracy, confusion_matrix, cross_val_scores
+from visualize import (
+    plot_confusion_matrix,
+    plot_pca_scatter_with_regions,
+    plot_feature_split_importance,
+    plot_tree,
+)
 from wifi_utils import WiFiDataset, load_wifi_dataset
 
 
@@ -42,6 +48,7 @@ def main() -> None:
     parser.add_argument("--depth_min", type=int, default=1)
     parser.add_argument("--depth_max", type=int, default=15)
     parser.add_argument("--plot", type=str, default="figures/depth_cv.png")
+    parser.add_argument("--outdir", type=str, default="figures")
     args = parser.parse_args()
 
     clean: WiFiDataset = load_wifi_dataset(args.clean)
@@ -53,7 +60,8 @@ def main() -> None:
         np.mean(cross_val_scores(lambda d=d: DecisionTreeClassifier(max_depth=d), clean.features, clean.labels, k=args.k))
         for d in depths
     ]
-    plot_depth_curve(depths, cv_curve, Path(args.plot))
+    outdir = Path(args.outdir)
+    plot_depth_curve(depths, cv_curve, outdir / "depth_cv.png")
 
     # Pick best depth and train-final on clean
     best_depth = int(depths[int(np.argmax(cv_curve))])
@@ -74,6 +82,33 @@ def main() -> None:
     print("Confusion matrix (rows=true, cols=pred):")
     np.set_printoptions(linewidth=120)
     print(cm_noisy)
+
+    # Visualizations
+    plot_confusion_matrix(cm_noisy, classes, outdir / "cm_noisy_counts.png", normalize=False)
+    plot_confusion_matrix(cm_noisy, classes, outdir / "cm_noisy_normalized.png", normalize=True)
+
+    if model.split_counts_ is not None:
+        plot_feature_split_importance(model.split_counts_, outdir / "feature_importance.png")
+
+    # PCA scatter with decision regions (approximate back-projection)
+    plot_pca_scatter_with_regions(
+        clean.features,
+        clean.labels,
+        predict_fn=model.predict,
+        out_path=outdir / "pca_regions_clean.png",
+        h=0.8,
+    )
+    plot_pca_scatter_with_regions(
+        noisy.features,
+        noisy.labels,
+        predict_fn=model.predict,
+        out_path=outdir / "pca_regions_noisy.png",
+        h=0.8,
+    )
+
+    # Plot the trained decision tree
+    if getattr(model, "root", None) is not None:
+        plot_tree(model.root, outdir / "tree.png")
 
 
 if __name__ == "__main__":
