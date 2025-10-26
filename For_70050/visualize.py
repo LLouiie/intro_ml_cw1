@@ -4,7 +4,6 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
-from scipy.linalg import svd
 
 
 def ensure_dir(path: Path) -> None:
@@ -47,7 +46,7 @@ def plot_confusion_matrix(cm: np.ndarray, classes: list[int], out_path: Path, no
 def pca_project(X: np.ndarray, n_components: int = 2) -> np.ndarray:
     Xc = X - X.mean(axis=0, keepdims=True)
     # Use SVD for stability
-    U, S, VT = svd(Xc, full_matrices=False)
+    U, S, VT = np.linalg.svd(Xc, full_matrices=False)
     W = VT[:n_components].T  # (d, n_components)
     return Xc @ W
 
@@ -65,7 +64,7 @@ def plot_pca_scatter_with_regions(
       we project grid points back by W^T (pseudo-inverse of PCA) around the mean.
     """
     Xc = X - X.mean(axis=0, keepdims=True)
-    U, S, VT = svd(Xc, full_matrices=False)
+    U, S, VT = np.linalg.svd(Xc, full_matrices=False)
     W = VT[:2].T
     X2 = Xc @ W
 
