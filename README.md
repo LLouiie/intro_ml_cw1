@@ -2,6 +2,8 @@
 
 This project implements a small end-to-end pipeline to train and evaluate a Decision Tree classifier on WiFi RSSI datasets. It includes data loading utilities, cross-validation, model training, metrics, and multiple visualizations.
 
+**Note**: This implementation strictly follows the coursework requirements - only using **numpy, matplotlib, and standard Python libraries** (no scipy, scikit-learn, or other external ML libraries).
+
 ### Quick Start
 
 ```bash
@@ -10,6 +12,9 @@ python -m venv .venv && source .venv/bin/activate
 
 # install dependencies
 pip install -r For_70050/requirements.txt
+
+# Alternative: if you want to exclude scipy (code uses only numpy)
+# pip install matplotlib==3.10.6 numpy==2.3.3
 
 # run (outputs figures under For_70050/figures)
 python For_70050/main.py \
@@ -54,9 +59,14 @@ bash intro_ml_cw1/bash.sh
     - Builds a binary tree using greedy information gain splits; records per-feature split counts.
   - `predict(X: np.ndarray) -> np.ndarray`
     - Traverses the tree for each row; returns integer class predictions.
+  - `_build_tree(X: np.ndarray, y: np.ndarray, depth: int) -> Tuple[Node, int]`
+    - Internal recursive method that follows the PDF Algorithm 1 specification.
+    - Returns `(node, actual_max_depth)` tuple as per coursework requirements.
+    - Performs left-then-right recursion and computes `max(l_depth, r_depth)` for depth tracking.
 
 Notes:
-- Stops when `depth >= max_depth`, `num_samples < min_samples_split`, or node impurity is 0.
+- Algorithm follows PDF Algorithm 1 (decision_tree_learning procedure).
+- Stops when `depth >= max_depth`, `num_samples < min_samples_split`, node impurity is 0, or all samples have the same label.
 - If no beneficial split found, makes a leaf predicting the most common label.
 
 ### metrics.py
@@ -76,7 +86,7 @@ Notes:
   - Saves confusion matrix heatmap. If `normalize=True`, rows are normalized.
 
 - `pca_project(X: np.ndarray, n_components: int = 2) -> np.ndarray`
-  - PCA via SVD. Returns projected `X` in lower dimensions.
+  - PCA via SVD using `numpy.linalg.svd` (no scipy). Returns projected `X` in lower dimensions.
 
 - `plot_pca_scatter_with_regions(X: np.ndarray, y: np.ndarray, predict_fn, out_path: Path, h: float = 0.5) -> None`
   - Reduces to 2D with PCA; approximates inverse mapping to plot decision regions and samples overlay. `predict_fn` is a callable like `model.predict`.
@@ -128,5 +138,7 @@ Notes:
 - Reproducibility: CV splitting uses the provided `seed` for shuffling.
 - Avoid training with empty arrays; functions validate shapes where necessary.
 - `plot_pca_scatter_with_regions` is an approximation of decision regions via PCA back-projection; interpret qualitatively.
-
+- **Coursework compliance**: Only uses `numpy`, `matplotlib`, and standard Python libraries (as required by the assignment).
+- **Implementation**: Decision tree algorithm follows PDF Algorithm 1 exactly, including depth tracking and left-then-right recursion.
+- **Note on scipy**: While `requirements.txt` lists scipy, the code has been modified to use `numpy.linalg.svd` instead. Scipy will be installed but not used by the code.
 
