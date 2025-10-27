@@ -2,7 +2,7 @@
 
 This project implements a small end-to-end pipeline to train and evaluate a Decision Tree classifier on WiFi RSSI datasets. It includes data loading utilities, cross-validation, model training, metrics, and multiple visualizations.
 
-**Note**: This implementation strictly follows the coursework requirements - only using **numpy, matplotlib, and standard Python libraries** (no scipy, scikit-learn, or other external ML libraries).
+**Note**: This implementation strictly follows the coursework requirements, only using **numpy, matplotlib, and standard Python libraries** (no scipy, scikit-learn, or other external ML libraries).
 
 ### Quick Start
 
@@ -18,13 +18,13 @@ pip install -r For_70050/requirements.txt
 
 # run (outputs figures under For_70050/figures)
 python For_70050/main.py \
-  --clean For_70050/wifi_db/clean_dataset.txt \
-  --noisy For_70050/wifi_db/noisy_dataset.txt \
+  --clean For_70050/wifi_db/clean_dataset.txt \ # ← change this path if needed
+  --noisy For_70050/wifi_db/noisy_dataset.txt \ # ← change this path if needed
   --k 5 --depth_min 1 --depth_max 15 \
   --outdir For_70050/figures
 
-# or use the provided script
-bash intro_ml_cw1/bash.sh
+# or use the provided script (you may edit dataset paths in it)
+bash intro_ml_cw1/bash.sh 
 ```
 
 ### Data Flow (Overview)
@@ -56,7 +56,7 @@ bash intro_ml_cw1/bash.sh
       - `root: Node | None` — trained tree root.
       - `split_counts_: np.ndarray | None` — feature split frequency (for visualization).
   - `fit(X: np.ndarray, y: np.ndarray) -> DecisionTreeClassifier`
-    - Builds a binary tree using greedy information gain splits; records per-feature split counts.
+    - Builds a binary tree using greedy information gain splits, records per-feature split counts.
   - `predict(X: np.ndarray) -> np.ndarray`
     - Traverses the tree for each row; returns integer class predictions.
   - `_build_tree(X: np.ndarray, y: np.ndarray, depth: int) -> Tuple[Node, int]`
@@ -107,7 +107,7 @@ Notes:
   - Loads tab- or space-delimited file, last column is integer label, others are float features.
 
 - `train_test_split(X: np.ndarray, y: np.ndarray, test_size: float = 0.2, seed: int | None = 42) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]`
-  - Shuffles indices with `seed`; returns `(X_train, X_test, y_train, y_test)`.
+  - Shuffles indices with `seed`, returns `(X_train, X_test, y_train, y_test)`.
 
 - `k_fold_indices(n_samples: int, k: int, seed: int = 42) -> list[tuple[np.ndarray, np.ndarray]]`
   - Returns list of `(train_idx, val_idx)` splits. Requires `k >= 2`.
@@ -136,7 +136,7 @@ Notes:
 ## Tips & Notes
 - Ensure labels are integers; features should be numeric (float-compatible).
 - Reproducibility: CV splitting uses the provided `seed` for shuffling.
-- Avoid training with empty arrays; functions validate shapes where necessary.
+- Avoid training with empty arrays, functions validate shapes where necessary.
 - `plot_pca_scatter_with_regions` is an approximation of decision regions via PCA back-projection; interpret qualitatively.
 - **Coursework compliance**: Only uses `numpy`, `matplotlib`, and standard Python libraries (as required by the assignment).
 - **Implementation**: Decision tree algorithm follows PDF Algorithm 1 exactly, including depth tracking and left-then-right recursion.
