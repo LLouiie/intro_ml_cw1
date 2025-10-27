@@ -154,27 +154,28 @@ def plot_tree(root, out_path: Path) -> None:
     ax = plt.gca()
     ax.axis("off")
 
-    # Draw edges first
+    # Draw edges first, color by depth for clarity
+    cmap = plt.get_cmap("viridis")
+    denom = max(max_depth, 1)
     for node, d, _ in layout_list:
         x, y = pos[id(node)]
+        edge_color = cmap(d / denom)
         for child in [getattr(node, "left", None), getattr(node, "right", None)]:
             if child is not None:
                 cx, cy = pos[id(child)]
-                ax.plot([x, cx], [y, cy], color="#888888", linewidth=1)
+                ax.plot([x, cx], [y, cy], color=edge_color, linewidth=1.2)
 
     # Draw nodes
     for node, d, _ in layout_list:
         x, y = pos[id(node)]
         is_leaf = getattr(node, "prediction", None) is not None and getattr(node, "left", None) is None and getattr(node, "right", None) is None
-        box_color = "#F5F5F5" if is_leaf else "#E8F0FE"
-        rect = plt.Rectangle((x - 0.06, y - 0.03), 0.12, 0.06, facecolor=box_color, edgecolor="#333333")
-        ax.add_patch(rect)
-        if getattr(node, "prediction", None) is not None and (getattr(node, "left", None) is None and getattr(node, "right", None) is None):
-            text = f"Leaf\npred={int(node.prediction)}\nN={node.num_samples}\nH={node.impurity:.2f}"
+        # Minimal labels only: remove boxes and N/H info
+        if is_leaf:
+            text = f"Leaf\npred={int(node.prediction)}"
         else:
             feat = getattr(node, "feature", None)
             thr = getattr(node, "threshold", None)
-            text = f"x[{feat}]<= {thr:.2f}\nN={node.num_samples}\nH={node.impurity:.2f}"
+            text = f"x[{feat}]<= {thr:.2f}"
         ax.text(x, y, text, ha="center", va="center", fontsize=8)
 
     plt.tight_layout()
