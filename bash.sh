@@ -1,8 +1,24 @@
-# train and visualize model 
+# train and visualize model
 
+# 1) Train on full clean dataset (saves figures incl. tree.png)
 python For_70050/main.py \
   --clean "For_70050/wifi_db/clean_dataset.txt" \
   --noisy "For_70050/wifi_db/noisy_dataset.txt" \
-  --k 5 --depth_min 1 --depth_max 15 \
-  --plot "For_70050/figures/depth_cv.png" \
+  --dataset clean \
+  --outdir "For_70050/figures"
+
+# 2) 10-fold CV on clean dataset
+python For_70050/main.py \
+  --clean "For_70050/wifi_db/clean_dataset.txt" \
+  --noisy "For_70050/wifi_db/noisy_dataset.txt" \
+  --dataset clean \
+  --cv --k 10 \
+  --outdir "For_70050/figures"
+
+# 3) 10-fold CV on noisy dataset
+python For_70050/main.py \
+  --clean "For_70050/wifi_db/clean_dataset.txt" \
+  --noisy "For_70050/wifi_db/noisy_dataset.txt" \
+  --dataset noisy \
+  --cv --k 10 \
   --outdir "For_70050/figures"

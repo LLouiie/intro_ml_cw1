@@ -2,7 +2,7 @@
 
 This project implements a small end-to-end pipeline to train and evaluate a Decision Tree classifier on WiFi RSSI datasets. It includes data loading utilities, cross-validation, model training, metrics, and multiple visualizations.
 
-**Note**: This implementation strictly follows the coursework requirements, only using **numpy, matplotlib, and standard Python libraries** (no scipy, scikit-learn, or other external ML libraries).
+**Note**: This implementation follows the coursework requirements, using only **numpy**, **matplotlib**, and standard Python libraries (no scikit-learn).
 
 ### Quick Start
 
@@ -13,25 +13,39 @@ python -m venv .venv && source .venv/bin/activate
 # install dependencies
 pip install -r For_70050/requirements.txt
 
-# Alternative: if you want to exclude scipy (code uses only numpy)
-# pip install matplotlib==3.10.6 numpy==2.3.3
+# Output figures will be saved under For_70050/figures
 
-# run (outputs figures under For_70050/figures)
+# 1) Train on the full clean dataset (saves tree.png and other figures)
 python For_70050/main.py \
-  --clean For_70050/wifi_db/clean_dataset.txt \ # ← change this path if needed
-  --noisy For_70050/wifi_db/noisy_dataset.txt \ # ← change this path if needed
-  --k 5 --depth_min 1 --depth_max 15 \
+  --clean For_70050/wifi_db/clean_dataset.txt \  # change path if needed
+  --noisy For_70050/wifi_db/noisy_dataset.txt \  # change path if needed
+  --dataset clean \
   --outdir For_70050/figures
 
-# or use the provided script (you may edit dataset paths in it)
-bash intro_ml_cw1/bash.sh 
+# 2) 10-fold cross-validation on the clean dataset
+python For_70050/main.py \
+  --clean For_70050/wifi_db/clean_dataset.txt \
+  --noisy For_70050/wifi_db/noisy_dataset.txt \
+  --dataset clean \
+  --cv --k 10 \
+  --outdir For_70050/figures
+
+# 3) 10-fold cross-validation on the noisy dataset
+python For_70050/main.py \
+  --clean For_70050/wifi_db/clean_dataset.txt \
+  --noisy For_70050/wifi_db/noisy_dataset.txt \
+  --dataset noisy \
+  --cv --k 10 \
+  --outdir For_70050/figures
+
+# Or run the helper script (edit dataset paths inside if needed)
+bash bash.sh
 ```
 
 ### Data Flow (Overview)
-1. Load datasets (`wifi_utils.load_wifi_dataset`).
-2. Cross-validate candidate `max_depth` values (`metrics.cross_val_scores`).
-3. Train the final `DecisionTreeClassifier` on the clean dataset.
-4. Evaluate on clean/noisy datasets and generate figures.
+1. Select a single dataset per run (`--dataset clean|noisy`) and load it (`wifi_utils.load_wifi_dataset`).
+2. If `--cv` is set, perform K-fold cross-validation (`metrics.cross_val_scores`) with `--k` folds and report fold accuracies/mean/std.
+3. If not `--cv`, train on the full selected dataset, report training accuracy, and save figures: confusion matrix, PCA decision regions, and the tree visualization.
 
 ---
 
@@ -47,25 +61,13 @@ bash intro_ml_cw1/bash.sh
   - Returns `(best_gain, threshold)`. Split rule is `left <= threshold`, `right > threshold`.
 
 - `@dataclass Node`
-  - Fields: `feature: int | None`, `threshold: float | None`, `left: Node | None`, `right: Node | None`, `prediction: int | None`, `num_samples: int | None`, `impurity: float | None`.
+  - Fields: `feature: int | None`, `threshold: float | None`, `left: Node | None`, `right: Node | None`, `prediction: int | None`.
 
 - `class DecisionTreeClassifier`
-  - `__init__()`
-    - Attributes after fit:
-      - `root: Node | None` — trained tree root.
-  - `fit(X: np.ndarray, y: np.ndarray) -> DecisionTreeClassifier`
-    - Builds a binary tree using greedy information gain splits, records per-feature split counts.
-  - `predict(X: np.ndarray) -> np.ndarray`
-    - Traverses the tree for each row; returns integer class predictions.
-  - `_build_tree(X: np.ndarray, y: np.ndarray, depth: int) -> Tuple[Node, int]`
-    - Internal recursive method that follows the PDF Algorithm 1 specification.
-    - Returns `(node, actual_max_depth)` tuple as per coursework requirements.
-    - Performs left-then-right recursion and computes `max(l_depth, r_depth)` for depth tracking.
-
-Notes:
-- Algorithm follows PDF Algorithm 1 (decision_tree_learning procedure).
-- Stops when `depth >= max_depth`, `num_samples < min_samples_split`, node impurity is 0, or all samples have the same label.
-- If no beneficial split found, makes a leaf predicting the most common label.
+  - `__init__()` → sets `root: Node | None = None`.
+  - `fit(X: np.ndarray, y: np.ndarray) -> DecisionTreeClassifier` → builds a binary tree using greedy information gain splits.
+  - `predict(X: np.ndarray) -> np.ndarray` → traverses the tree for each row; returns integer class predictions.
+  - Internal: `_build_tree(X: np.ndarray, y: np.ndarray, depth: int) -> tuple[Node, int]` returns `(node, actual_max_depth)`; follows the PDF algorithm (left-then-right recursion).
 
 ### metrics.py
 
@@ -90,7 +92,7 @@ Notes:
   - Reduces to 2D with PCA; approximates inverse mapping to plot decision regions and samples overlay. `predict_fn` is a callable like `model.predict`.
 
 - `plot_tree(root, out_path: Path) -> None`
-  - Simple hierarchical drawing of the trained tree using `Node` attributes (`feature`, `threshold`, `prediction`, `num_samples`, `impurity`).
+  - Simple hierarchical drawing of the trained tree using `Node` attributes (`feature`, `threshold`, `prediction`).
 
 ### wifi_utils.py
 
@@ -101,39 +103,27 @@ Notes:
 - `load_wifi_dataset(path: str) -> WiFiDataset`
   - Loads tab- or space-delimited file, last column is integer label, others are float features.
 
-- `train_test_split(X: np.ndarray, y: np.ndarray, test_size: float = 0.2, seed: int | None = 42) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]`
-  - Shuffles indices with `seed`, returns `(X_train, X_test, y_train, y_test)`.
-
 - `k_fold_indices(n_samples: int, k: int, seed: int = 42) -> list[tuple[np.ndarray, np.ndarray]]`
   - Returns list of `(train_idx, val_idx)` splits. Requires `k >= 2`.
 
 ### main.py
 
-- `tune_depth(X: np.ndarray, y: np.ndarray, depths: list[int], k: int = 5) -> int`
-  - Runs K-fold CV over candidate `depths` using `DecisionTreeClassifier(max_depth=d)`; returns the depth with the highest mean accuracy.
+- CLI arguments:
+  - `--clean`: path to clean dataset (default `wifi_db/clean_dataset.txt`)
+  - `--noisy`: path to noisy dataset (default `wifi_db/noisy_dataset.txt`)
+  - `--dataset {clean,noisy}`: which dataset to use for this run (default `clean`)
+  - `--cv`: enable K-fold cross-validation (report fold scores and mean/std)
+  - `--k`: number of folds for cross-validation (default `10`)
+  - `--outdir`: figures output directory (default `figures`)
 
-- `plot_depth_curve(depths: list[int], scores: list[float], out_path: Path) -> None`
-  - Saves the cross-validation accuracy curve for visual inspection.
-
-- CLI `main()`
-  - Arguments:
-    - `--clean`: path to clean dataset (default `wifi_db/clean_dataset.txt`)
-    - `--noisy`: path to noisy dataset (default `wifi_db/noisy_dataset.txt`)
-    - `--k`: number of CV folds (default `5`)
-    - `--depth_min` / `--depth_max`: depth search range (default `1..15`)
-    - `--plot`: legacy option for depth plot output (not strictly required)
-    - `--outdir`: figures output directory (default `figures`)
-  - Prints: best depth, train/test accuracies, class list, confusion matrix.
-  - Saves: `depth_cv.png`, `cm_noisy_counts.png`, `cm_noisy_normalized.png`, `pca_regions_clean.png`, `pca_regions_noisy.png`, `feature_importance.png`, `tree.png`.
+- Outputs when training on full dataset: confusion matrices, PCA decision regions, and `tree.png`.
 
 ---
 
 ## Tips & Notes
 - Ensure labels are integers; features should be numeric (float-compatible).
 - Reproducibility: CV splitting uses the provided `seed` for shuffling.
-- Avoid training with empty arrays, functions validate shapes where necessary.
-- `plot_pca_scatter_with_regions` is an approximation of decision regions via PCA back-projection; interpret qualitatively.
-- **Coursework compliance**: Only uses `numpy`, `matplotlib`, and standard Python libraries (as required by the assignment).
-- **Implementation**: Decision tree algorithm follows PDF Algorithm 1 exactly, including depth tracking and left-then-right recursion.
-- **Note on scipy**: While `requirements.txt` lists scipy, the code has been modified to use `numpy.linalg.svd` instead. Scipy will be installed but not used by the code.
+- Avoid training with empty arrays; functions validate shapes where necessary.
+- `plot_pca_scatter_with_regions` approximates decision regions via PCA back-projection; interpret qualitatively.
+- Coursework compliance: Uses `numpy`, `matplotlib`, and standard Python libraries as required.
 
