@@ -1,0 +1,177 @@
+"""
+Pruning evaluation module for Decision Tree Coursework.
+Implements nested cross-validation for evaluating pruned trees.
+"""
+
+from pathlib import Path
+from typing import List, Tuple
+import numpy as np
+
+from decision_tree import DecisionTreeClassifier
+from metrics import accuracy, confusion_matrix, recall_precision_f1
+from visualize import plot_confusion_matrix, plot_tree
+from wifi_utils import k_fold_indices
+
+
+def nested_cv_evaluate_pruned(
+    X: np.ndarray,
+    y: np.ndarray,
+    outer_k: int = 10,
+    inner_k: int = 9,
+    seed: int = 42
+) -> Tuple[List[float], List[np.ndarray], List[List[int]], List[int], List[int]]:
+    """
+    Perform nested cross-validation for pruned trees.
+    
+    Args:
+        X: Feature matrix
+        y: Labels
+        outer_k: Number of outer folds (default 10)
+        inner_k: Number of inner folds (default 9)
+        seed: Random seed
+    
+    Returns:
+        Tuple of (test_accuracies, confusion_matrices, class_lists, depths_before, depths_after)
+    """
+    n_samples = len(y)
+    outer_splits = k_fold_indices(n_samples, k=outer_k, seed=seed)
+    
+    all_test_accuracies = []
+    all_confusion_matrices = []
+    all_classes = []
+    all_depths_before = []
+    all_depths_after = []
+    
+    for outer_fold_idx, (outer_train_val_idx, test_idx) in enumerate(outer_splits):
+        print(f"Outer fold {outer_fold_idx + 1}/{outer_k}")
+        
+        X_test = X[test_idx]
+        y_test = y[test_idx]
+        
+        inner_splits = k_fold_indices(len(outer_train_val_idx), k=inner_k, seed=seed + outer_fold_idx)
+        
+        for inner_fold_idx, (inner_train_idx, inner_val_idx) in enumerate(inner_splits):
+            # Map back to original indices
+            actual_train_idx = outer_train_val_idx[inner_train_idx]
+            actual_val_idx = outer_train_val_idx[inner_val_idx]
+            
+            X_train = X[actual_train_idx]
+            y_train = y[actual_train_idx]
+            X_val = X[actual_val_idx]
+            y_val = y[actual_val_idx]
+            
+            # Train and prune
+            model = DecisionTreeClassifier()
+            model.fit(X_train, y_train)
+            depth_before = model.get_depth()
+            model.prune(X_val, y_val)
+            depth_after = model.get_depth()
+            
+            all_depths_before.append(depth_before)
+            all_depths_after.append(depth_after)
+            
+            # Evaluate
+            y_pred = model.predict(X_test)
+            test_acc = accuracy(y_test, y_pred)
+            cm, classes = confusion_matrix(y_test, y_pred)
+            
+            all_test_accuracies.append(test_acc)
+            all_confusion_matrices.append(cm)
+            all_classes.append(classes)
+    
+    return all_test_accuracies, all_confusion_matrices, all_classes, all_depths_before, all_depths_after
+
+
+def aggregate_confusion_matrices(all_cms: List[np.ndarray], all_classes: List[List[int]]) -> Tuple[np.ndarray, List[int]]:
+    """
+    Aggregate all confusion matrices.
+    
+    Args:
+        all_cms: List of confusion matrices
+        all_classes: List of class label lists
+    
+    Returns:
+        Tuple of (aggregated_cm, unique_classes)
+    """
+    all_class_values = set()
+    for classes in all_classes:
+        all_class_values.update(classes)
+    unique_classes = sorted(list(all_class_values))
+    class_to_idx = {c: i for i, c in enumerate(unique_classes)}
+    n_classes = len(unique_classes)
+    
+    aggregated_cm = np.zeros((n_classes, n_classes), dtype=int)
+    for cm, classes in zip(all_cms, all_classes):
+        local_to_global = {local_cls: class_to_idx[local_cls] for local_cls in classes}
+        for local_true_idx, true_cls in enumerate(classes):
+            for local_pred_idx, pred_cls in enumerate(classes):
+                global_true_idx = local_to_global[true_cls]
+                global_pred_idx = local_to_global[pred_cls]
+                aggregated_cm[global_true_idx, global_pred_idx] += cm[local_true_idx, local_pred_idx]
+    
+    return aggregated_cm, unique_classes
+
+
+def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
+    """
+    Run nested CV evaluation for pruned trees on both datasets.
+    Visualize pruned tree for clean dataset only.
+    
+    Args:
+        clean_dataset: WiFiDataset for clean data
+        noisy_dataset: WiFiDataset for noisy data
+        outdir: Output directory for figures
+    """
+    datasets = {"clean": clean_dataset, "noisy": noisy_dataset}
+    
+    for dataset_name, dataset in datasets.items():
+        print(f"\n{'='*70}")
+        print(f"Running nested CV for pruned trees on {dataset_name} dataset...")
+        print(f"{'='*70}")
+        
+        all_accs, all_cms, all_classes, depths_before, depths_after = nested_cv_evaluate_pruned(
+            dataset.features, dataset.labels, outer_k=10, inner_k=9, seed=42
+        )
+        
+        print(f"\nResults for {dataset_name} dataset:")
+        print(f"Total test results: {len(all_accs)}")
+        print(f"Mean accuracy: {np.mean(all_accs):.4f}")
+        print(f"Std accuracy: {np.std(all_accs):.4f}")
+        print(f"Min: {np.min(all_accs):.4f}, Max: {np.max(all_accs):.4f}")
+        
+        # Aggregate CM
+        agg_cm, classes = aggregate_confusion_matrices(all_cms, all_classes)
+        print(f"\nAggregated confusion matrix:")
+        print(agg_cm)
+        
+        # Calculate recall, precision, F1
+        recall_dict, precision_dict, f1_dict = recall_precision_f1(agg_cm, classes)
+        
+        print(f"\nPer-class metrics:")
+        for cls in sorted(classes):
+            print(f"  Class {cls}: Recall={recall_dict[cls]:.4f}, Precision={precision_dict[cls]:.4f}, F1={f1_dict[cls]:.4f}")
+        
+        # Save CM
+        plot_confusion_matrix(agg_cm, classes, outdir / f"cm_{dataset_name}_pruned_counts.png", normalize=False)
+        plot_confusion_matrix(agg_cm, classes, outdir / f"cm_{dataset_name}_pruned_normalized.png", normalize=True)
+        
+        # Depth analysis
+        print(f"\nDepth Analysis for {dataset_name}:")
+        print(f"  Before pruning: mean={np.mean(depths_before):.2f}, min={np.min(depths_before)}, max={np.max(depths_before)}")
+        print(f"  After pruning: mean={np.mean(depths_after):.2f}, min={np.min(depths_after)}, max={np.max(depths_after)}")
+        print(f"  Avg reduction: {np.mean(depths_before) - np.mean(depths_after):.2f}")
+    
+    # Visualize pruned tree for clean dataset only
+    print(f"\n{'='*70}")
+    print("Visualizing pruned tree for clean dataset...")
+    indices = np.random.default_rng(42).permutation(len(clean_dataset.labels))
+    split_idx = int(0.8 * len(clean_dataset.labels))
+    train_idx, val_idx = indices[:split_idx], indices[split_idx:]
+    
+    model = DecisionTreeClassifier()
+    model.fit(clean_dataset.features[train_idx], clean_dataset.labels[train_idx])
+    model.prune(clean_dataset.features[val_idx], clean_dataset.labels[val_idx])
+    
+    plot_tree(model.root, outdir / "tree_clean_pruned.png")
+    print("Saved: tree_clean_pruned.png")
+
