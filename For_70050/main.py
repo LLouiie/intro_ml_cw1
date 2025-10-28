@@ -19,7 +19,7 @@ from wifi_utils import WiFiDataset, load_wifi_dataset
 def tune_depth(X: np.ndarray, y: np.ndarray, depths: List[int], k: int = 5) -> int:
     cv_means = []
     for d in depths:
-        scores = cross_val_scores(lambda: DecisionTreeClassifier(max_depth=d), X, y, k=k)
+        scores = cross_val_scores(lambda: DecisionTreeClassifier(), X, y, k=k)
         cv_means.append(np.mean(scores))
     best_idx = int(np.argmax(cv_means))
     return int(depths[best_idx])
@@ -55,7 +55,7 @@ def main() -> None:
     depths = list(range(args.depth_min, args.depth_max + 1))
     # Compute CV curve for plotting
     cv_curve = [
-        np.mean(cross_val_scores(lambda d=d: DecisionTreeClassifier(max_depth=d), clean.features, clean.labels, k=args.k))
+        np.mean(cross_val_scores(lambda d=d: DecisionTreeClassifier(), clean.features, clean.labels, k=args.k))
         for d in depths
     ]
     outdir = Path(args.outdir)
@@ -63,7 +63,7 @@ def main() -> None:
 
     # Pick best depth and train-final on clean
     best_depth = int(depths[int(np.argmax(cv_curve))])
-    model = DecisionTreeClassifier(max_depth=best_depth)
+    model = DecisionTreeClassifier()
     model.fit(clean.features, clean.labels)
 
     # Evaluate on clean (train perf) and noisy (generalization perf)
@@ -85,9 +85,7 @@ def main() -> None:
     plot_confusion_matrix(cm_noisy, classes, outdir / "cm_noisy_counts.png", normalize=False)
     plot_confusion_matrix(cm_noisy, classes, outdir / "cm_noisy_normalized.png", normalize=True)
 
-    if model.split_counts_ is not None:
-        plot_feature_split_importance(model.split_counts_, outdir / "feature_importance.png")
-
+   
     # PCA scatter with decision regions (approximate back-projection)
     plot_pca_scatter_with_regions(
         clean.features,

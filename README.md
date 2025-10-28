@@ -50,11 +50,9 @@ bash intro_ml_cw1/bash.sh
   - Fields: `feature: int | None`, `threshold: float | None`, `left: Node | None`, `right: Node | None`, `prediction: int | None`, `num_samples: int | None`, `impurity: float | None`.
 
 - `class DecisionTreeClassifier`
-  - `__init__(max_depth: int = 5, min_samples_split: int = 2)`
-    - Constraints: `max_depth >= 1`, `min_samples_split >= 2`.
+  - `__init__()`
     - Attributes after fit:
       - `root: Node | None` — trained tree root.
-      - `split_counts_: np.ndarray | None` — feature split frequency (for visualization).
   - `fit(X: np.ndarray, y: np.ndarray) -> DecisionTreeClassifier`
     - Builds a binary tree using greedy information gain splits, records per-feature split counts.
   - `predict(X: np.ndarray) -> np.ndarray`
@@ -90,9 +88,6 @@ Notes:
 
 - `plot_pca_scatter_with_regions(X: np.ndarray, y: np.ndarray, predict_fn, out_path: Path, h: float = 0.5) -> None`
   - Reduces to 2D with PCA; approximates inverse mapping to plot decision regions and samples overlay. `predict_fn` is a callable like `model.predict`.
-
-- `plot_feature_split_importance(split_counts: np.ndarray, out_path: Path) -> None`
-  - Bar chart of per-feature split counts from the trained tree (`DecisionTreeClassifier.split_counts_`).
 
 - `plot_tree(root, out_path: Path) -> None`
   - Simple hierarchical drawing of the trained tree using `Node` attributes (`feature`, `threshold`, `prediction`, `num_samples`, `impurity`).

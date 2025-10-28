@@ -76,23 +76,15 @@ class Node:
     left: Optional["Node"] = None
     right: Optional["Node"] = None
     prediction: Optional[int] = None
-    # for visualization
-    num_samples: Optional[int] = None
-    impurity: Optional[float] = None
+    
+   
 
 
 class DecisionTreeClassifier:
-    def __init__(self, max_depth: int = 5, min_samples_split: int = 2):
-        if max_depth < 1:
-            raise ValueError("max_depth must be >= 1")
-        self.max_depth = max_depth
-        self.min_samples_split = max(2, int(min_samples_split))
-        self.root: Optional[Node] = None
-        # Track how often each feature is used for splitting
-        self.split_counts_: Optional[np.ndarray] = None
+    def __init__(self):
+        self.root: Optional[Node] = None      
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "DecisionTreeClassifier":
-        self.split_counts_ = np.zeros(X.shape[1], dtype=int)
         self.root, _ = self._build_tree(X, y, depth=0)
         return self
 
@@ -109,22 +101,15 @@ class DecisionTreeClassifier:
 
     def _build_tree(self, X: np.ndarray, y: np.ndarray, depth: int) -> Tuple[Node, int]:
         """
-        Returns (node, actual_max_depth) as per PDF algorithm specification.
+        Returns (node, actual_depth) as per PDF algorithm specification.
         """
         node = Node()
-        num_samples, num_features = X.shape
-        node.num_samples = int(num_samples)
-        node.impurity = float(entropy(y))
+        num_features = X.shape[1]
 
         # Base case: all samples have the same label (leaf node)
         unique_labels = np.unique(y)
         if len(unique_labels) == 1:
             node.prediction = int(unique_labels[0])
-            return node, depth
-        
-        # Base case: stopping criteria
-        if depth >= self.max_depth or num_samples < self.min_samples_split or node.impurity == 0.0:
-            node.prediction = self._most_common_label(y)
             return node, depth
 
         # Find best split across all features
@@ -152,8 +137,6 @@ class DecisionTreeClassifier:
         # Create node with split feature and threshold
         node.feature = int(best_feat)
         node.threshold = float(best_thr)
-        if self.split_counts_ is not None:
-            self.split_counts_[best_feat] += 1
 
         # Left branch (recursive): lbranch, l_depth ← DECISION TREE LEARNING (ldataset, depth+1)
         node.left, l_depth = self._build_tree(X[left_mask], y[left_mask], depth + 1)
