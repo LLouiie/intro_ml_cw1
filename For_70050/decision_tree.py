@@ -83,10 +83,25 @@ class Node:
 class DecisionTreeClassifier:
     def __init__(self):
         self.root: Optional[Node] = None      
+        self.max_depth: int = 0
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "DecisionTreeClassifier":
-        self.root, _ = self._build_tree(X, y, depth=0)
+        self.root, self.max_depth = self._build_tree(X, y, depth=0)
         return self
+    
+    def get_depth(self) -> int:
+        """Get the maximum depth of the tree."""
+        return self.max_depth
+    
+    def _compute_depth(self, node: Optional[Node]) -> int:
+        """Recursively compute maximum depth of tree."""
+        if node is None:
+            return 0
+        if node.prediction is not None:
+            return 0  # Leaf node contributes 0 to depth
+        left_depth = self._compute_depth(node.left) if node.left else 0
+        right_depth = self._compute_depth(node.right) if node.right else 0
+        return 1 + max(left_depth, right_depth)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         if self.root is None:
@@ -157,5 +172,120 @@ class DecisionTreeClassifier:
                 assert node.right is not None
                 node = node.right
         return int(node.prediction)
+
+    def prune(self, X_val: np.ndarray, y_val: np.ndarray) -> "DecisionTreeClassifier":
+        """
+        Prune the decision tree based on validation error.
+        
+        For each node directly connected to two leaves, evaluate if replacing it with
+        a single leaf reduces or maintains validation error.
+        Decision: prune if validation error on pruned tree <= error on original tree.
+        Iterates until no improvements can be made.
+        
+        Args:
+            X_val: Validation features (used to evaluate each pruning decision)
+            y_val: Validation labels (used to evaluate each pruning decision)
+            
+        Returns:
+            self (allows chaining)
+        """
+        if self.root is None:
+            raise RuntimeError("Model is not fitted")
+        
+        # Iterate pruning until no improvements can be made
+        changed = True
+        while changed:
+            changed = self._prune_one_pass(self.root, X_val, y_val)
+        
+        # Update depth after pruning
+        self.max_depth = self._compute_depth(self.root)
+        
+        return self
+    
+    def _prune_one_pass(self, node: Node, X_val: np.ndarray, y_val: np.ndarray) -> bool:
+        """
+        Perform one pass of bottom-up pruning.
+        Returns True if any pruning occurred in this pass.
+        """
+        if node.prediction is not None:
+            # Leaf node, nothing to prune
+            return False
+        
+        # First, recursively prune children (bottom-up)
+        pruned_left = self._prune_one_pass(node.left, X_val, y_val) if node.left else False
+        pruned_right = self._prune_one_pass(node.right, X_val, y_val) if node.right else False
+        
+        # Now check if current node can be pruned
+        # Node can be pruned if it's directly connected to two leaves
+        if self._is_leaf(node.left) and self._is_leaf(node.right):
+            # Calculate majority class from the two leaf predictions
+            majority_pred = self._get_majority_from_leaves(node.left, node.right)
+            
+            # Store current state
+            original_pred = node.prediction
+            original_feat = node.feature
+            original_thr = node.threshold
+            original_left = node.left
+            original_right = node.right
+            
+            # Calculate error with original node first
+            original_error = self._evaluate_error(X_val, y_val)
+            
+            # Temporarily replace node with leaf
+            node.prediction = majority_pred
+            node.feature = None
+            node.threshold = None
+            node.left = None
+            node.right = None
+            
+            # Evaluate error with pruned node
+            pruned_error = self._evaluate_error(X_val, y_val)
+            
+            # Restore original node
+            node.prediction = original_pred
+            node.feature = original_feat
+            node.threshold = original_thr
+            node.left = original_left
+            node.right = original_right
+            
+            # Prune if error does not increase (reduces or stays same)
+            if pruned_error <= original_error:
+                # Actually prune the node
+                node.prediction = majority_pred
+                node.feature = None
+                node.threshold = None
+                node.left = None
+                node.right = None
+                return True
+            
+        return pruned_left or pruned_right
+    
+    def _get_majority_from_leaves(self, left: Node, right: Node) -> int:
+        """
+        Get majority class from two leaf nodes.
+        If predictions are different, prefer left (arbitrary choice).
+        """
+        if left.prediction == right.prediction:
+            return left.prediction
+        # If different, return left prediction (could use counts if available)
+        return left.prediction
+    
+    def _is_leaf(self, node: Optional[Node]) -> bool:
+        """Check if node is a leaf."""
+        if node is None:
+            return False
+        return node.prediction is not None
+    
+    def _evaluate_error(self, X_val: np.ndarray, y_val: np.ndarray) -> float:
+        """
+        Evaluate classification error on validation set.
+        Returns 1 - accuracy (error rate).
+        """
+        if self.root is None:
+            return 1.0
+        
+        y_pred = self.predict(X_val)
+        # Return error rate (1 - accuracy)
+        return float(1.0 - np.mean(y_val == y_pred))
 
 
