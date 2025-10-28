@@ -35,13 +35,15 @@ def load_wifi_dataset(path: str) -> WiFiDataset:
     return WiFiDataset(features=features, labels=labels)
 
 
-def k_fold_indices(n_samples: int, k: int, seed: int = 42) -> List[Tuple[np.ndarray, np.ndarray]]:
+def k_fold_indices(n_samples: int, k: int = 10, seed: int = 42) -> List[Tuple[np.ndarray, np.ndarray]]:
     """
-    Generate k-fold train/validation index splits.
-    Returns a list of (train_indices, val_indices) tuples.
+    Generate k-fold train/test index splits.
+    Returns a list of (train_indices, test_indices) tuples.
     """
     if k < 2:
         raise ValueError("k must be >= 2")
+    if n_samples < k:
+        raise ValueError("Number of samples must be >= k")
     
     rng = np.random.default_rng(seed)
     indices = np.arange(n_samples)
@@ -50,10 +52,10 @@ def k_fold_indices(n_samples: int, k: int, seed: int = 42) -> List[Tuple[np.ndar
     folds = np.array_split(indices, k)
     splits: List[Tuple[np.ndarray, np.ndarray]] = []
     for i in range(k):
-        # current fold is validation, rest are training
-        val_idx = folds[i]
+        # current fold is test, rest are training
+        test_idx = folds[i]
         train_idx = np.concatenate([folds[j] for j in range(k) if j != i])
-        splits.append((train_idx, val_idx))
+        splits.append((train_idx, test_idx))
     return splits
 
 
