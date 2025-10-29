@@ -85,6 +85,7 @@ def precision_recall_f1(cm: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndar
                        where=(precision + recall) != 0)
     return precision, recall, f1
 
+
 def evaluate(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, np.ndarray]:
     """
     Evaluate model performance for one test set.
