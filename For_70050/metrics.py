@@ -29,50 +29,49 @@ def confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[np.ndarray
     return cm, list(map(int, classes.tolist()))
 
 
-def precision_recall_f1(cm: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def recall_precision_f1(cm: np.ndarray, classes: List[int]) -> Tuple[Dict[int, float], Dict[int, float], Dict[int, float]]:
     """
-    Compute per-class precision, recall, and F1 scores from confusion matrix.
+    Calculate recall, precision, and F1 for each class from confusion matrix.
+    
+    Args:
+        cm: Confusion matrix (n_classes x n_classes)
+        classes: List of class labels
+    
+    Returns:
+        recall_dict, precision_dict, f1_dict: Dictionaries mapping class -> metric
     """
-    with np.errstate(divide="ignore", invalid="ignore"):
-        tp = np.diag(cm)
-        fp = np.sum(cm, axis=0) - tp
-        fn = np.sum(cm, axis=1) - tp
-
-        precision = np.divide(tp, tp + fp, out=np.zeros_like(tp, dtype=float), where=(tp + fp) != 0)
-        recall = np.divide(tp, tp + fn, out=np.zeros_like(tp, dtype=float), where=(tp + fn) != 0)
-        f1 = np.divide(2 * precision * recall, precision + recall,
-                       out=np.zeros_like(tp, dtype=float),
-                       where=(precision + recall) != 0)
-    return precision, recall, f1
-
-
-def evaluate(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, np.ndarray]:
-    """
-    Evaluate model performance for one test set.
-    Returns accuracy, confusion matrix, precision, recall, and f1 arrays.
-    """
-    acc = accuracy(y_true, y_pred)
-    cm, classes = confusion_matrix(y_true, y_pred)
-    precision, recall, f1 = precision_recall_f1(cm)
-    return {
-        "accuracy": acc,
-        "confusion_matrix": cm,
-        "classes": classes,
-        "precision": precision,
-        "recall": recall,
-        "f1": f1,
-    }
+    n_classes = len(classes)
+    recall_dict = {}
+    precision_dict = {}
+    f1_dict = {}
+    
+    for i, cls in enumerate(classes):
+        # True positives: cm[i, i]
+        # False negatives: sum of row i excluding diagonal
+        # False positives: sum of column i excluding diagonal
+        
+        tp = cm[i, i]
+        fn = cm[i, :].sum() - tp
+        fp = cm[:, i].sum() - tp
+        
+        # Recall = TP / (TP + FN)
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        recall_dict[cls] = float(recall)
+        
+        # Precision = TP / (TP + FP)
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        precision_dict[cls] = float(precision)
+        
+        # F1 = 2 * (precision * recall) / (precision + recall)
+        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+        f1_dict[cls] = float(f1)
+    
+    return recall_dict, precision_dict, f1_dict
 
 
-def cross_val_evaluate(model_factory, X: np.ndarray, y: np.ndarray, k: int = 10, seed: int = 42) -> Dict[str, np.ndarray]:
-    """
-    Perform k-fold cross-validation and aggregate metrics across folds.
-    Returns average confusion matrix, mean accuracy, and per-class averaged metrics.
-    """
-    folds = k_fold_indices(len(y), k=k, seed=seed)
-    cms, accuracies, precisions, recalls, f1s = [], [], [], [], []
-
-    for train_idx, test_idx in folds:
+def cross_val_scores(model_factory, X: np.ndarray, y: np.ndarray, k: int = 5, seed: int = 42) -> List[float]:
+    scores: List[float] = []
+    for train_idx, val_idx in k_fold_indices(len(y), k=k, seed=seed):
         model = model_factory()
         model.fit(X[train_idx], y[train_idx])
         y_pred = model.predict(X[test_idx])
