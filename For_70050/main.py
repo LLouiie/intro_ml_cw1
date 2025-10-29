@@ -3,7 +3,11 @@ from pathlib import Path
 import numpy as np
 
 from decision_tree import DecisionTreeClassifier
-from metrics import accuracy, confusion_matrix, cross_val_scores
+from metrics import (
+    accuracy,
+    confusion_matrix,
+    cross_val_evaluate,
+)
 from visualize import (
     plot_confusion_matrix,
     plot_pca_scatter_with_regions,
@@ -28,13 +32,38 @@ def main() -> None:
     data: WiFiDataset = load_wifi_dataset(selected_path)
 
     outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
 
     if args.cv:
-        # k-fold cross-validation on the selected dataset
-        scores = cross_val_scores(lambda: DecisionTreeClassifier(), data.features, data.labels, k=args.k)
+        results = cross_val_evaluate(
+            model_factory=lambda: DecisionTreeClassifier(),
+            X=data.features,
+            y=data.labels,
+            k=args.k,
+            seed=42,
+        )
+
+        # Use all dataset labels to keep class order consistent across plots
+        classes = list(map(int, np.unique(data.labels).astype(int)))
+
+        mean_acc = results["mean_accuracy"]
+        mean_cm = results["mean_confusion_matrix"]    # Combined confusion matrix (sum of all folds)
+        per_prec = results["mean_precision"]          # Mean per-class precision across folds
+        per_rec = results["mean_recall"]              # Mean per-class recall across folds
+        per_f1 = results["mean_f1"]                   # Mean per-class F1 across folds
+
         print(f"Dataset: {selected_name}")
-        print(f"{args.k}-fold CV accuracies: {[round(float(s), 4) for s in scores]}")
-        print(f"Mean accuracy: {float(np.mean(scores)):.4f}  (std: {float(np.std(scores)):.4f})")
+        print(f"{args.k}-fold Mean Accuracy: {mean_acc:.4f}")
+        np.set_printoptions(linewidth=120, suppress=True)
+        print("Accumulated Confusion Matrix over all test folds (rows=true, cols=pred):")
+        print(mean_cm)
+        print("Per-class Precision:", np.round(per_prec, 4))
+        print("Per-class Recall   :", np.round(per_rec, 4))
+        print("Per-class F1       :", np.round(per_f1, 4))
+
+        # Plot the overall confusion matrix from cross-validation (counts & normalized)
+        plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}_counts.png", normalize=False)
+        plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}_normalized.png", normalize=True)
         return
 
     # Train on the full selected dataset and produce visualizations
