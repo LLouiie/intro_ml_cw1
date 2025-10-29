@@ -161,17 +161,20 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
         print(f"  After pruning: mean={np.mean(depths_after):.2f}, min={np.min(depths_after)}, max={np.max(depths_after)}")
         print(f"  Avg reduction: {np.mean(depths_before) - np.mean(depths_after):.2f}")
     
-    # Visualize pruned tree for clean dataset only
+    # Visualize pruned trees for both datasets to ensure figures are saved during prune-CV runs
     print(f"\n{'='*70}")
-    print("Visualizing pruned tree for clean dataset...")
-    indices = np.random.default_rng(42).permutation(len(clean_dataset.labels))
-    split_idx = int(0.8 * len(clean_dataset.labels))
-    train_idx, val_idx = indices[:split_idx], indices[split_idx:]
-    
-    model = DecisionTreeClassifier()
-    model.fit(clean_dataset.features[train_idx], clean_dataset.labels[train_idx])
-    model.prune(clean_dataset.features[val_idx], clean_dataset.labels[val_idx])
-    
-    plot_tree(model.root, outdir / "tree_clean_pruned.png")
-    print("Saved: tree_clean_pruned.png")
+    print("Visualizing pruned trees for both datasets...")
+    for ds_name, ds in [("clean", clean_dataset), ("noisy", noisy_dataset)]:
+        rng = np.random.default_rng(42)
+        indices = rng.permutation(len(ds.labels))
+        split_idx = int(0.8 * len(ds.labels))
+        train_idx, val_idx = indices[:split_idx], indices[split_idx:]
+
+        model = DecisionTreeClassifier()
+        model.fit(ds.features[train_idx], ds.labels[train_idx])
+        model.prune(ds.features[val_idx], ds.labels[val_idx])
+
+        out_path = outdir / f"tree_{ds_name}_pruned.png"
+        plot_tree(model.root, out_path)
+        print(f"Saved: {out_path.name}")
 

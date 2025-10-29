@@ -150,7 +150,11 @@ def plot_tree(root, out_path: Path) -> None:
         pos[nid] = (x_norm, y_norm)
         node_by_id[nid] = node
 
-    plt.figure(figsize=(10, 6))
+    # Figure size scales with horizontal node count and depth to reduce crowding
+    max_nodes_at_any_depth = max(per_depth_counts.values()) if per_depth_counts else 1
+    fig_width = max(14.0, min(60.0, max_nodes_at_any_depth * 1.2))
+    fig_height = max(6.0, min(40.0, (max_depth + 1) * 1.2))
+    plt.figure(figsize=(fig_width, fig_height))
     ax = plt.gca()
     ax.axis("off")
 
@@ -165,18 +169,30 @@ def plot_tree(root, out_path: Path) -> None:
                 cx, cy = pos[id(child)]
                 ax.plot([x, cx], [y, cy], color=edge_color, linewidth=1.2)
 
-    # Draw nodes
+    # Draw nodes with rounded boxes
     for node, d, _ in layout_list:
         x, y = pos[id(node)]
         is_leaf = getattr(node, "prediction", None) is not None and getattr(node, "left", None) is None and getattr(node, "right", None) is None
-        # Minimal labels only: remove boxes and N/H info
         if is_leaf:
-            text = f"Leaf\npred={int(node.prediction)}"
+            text = f"leaf:{int(node.prediction)}"
         else:
             feat = getattr(node, "feature", None)
             thr = getattr(node, "threshold", None)
-            text = f"x[{feat}]<= {thr:.2f}"
-        ax.text(x, y, text, ha="center", va="center", fontsize=8)
+            text = f"[x{feat} < {thr:.1f}]"
+        ax.text(
+            x,
+            y,
+            text,
+            ha="center",
+            va="center",
+            fontsize=9,
+            bbox={
+                "boxstyle": "round,pad=0.25",
+                "fc": "white",
+                "ec": "#4C78A8",
+                "lw": 1.0,
+            },
+        )
 
     plt.tight_layout()
     ensure_dir(out_path)
