@@ -17,8 +17,8 @@ pip install -r For_70050/requirements.txt
 
 # 1) Train on the full clean dataset (saves tree.png and other figures)
 python For_70050/main.py \
-  --clean For_70050/wifi_db/clean_dataset.txt \  # change path if needed
-  --noisy For_70050/wifi_db/noisy_dataset.txt \  # change path if needed
+  --clean For_70050/wifi_db/clean_dataset.txt \
+  --noisy For_70050/wifi_db/noisy_dataset.txt \
   --dataset clean \
   --outdir For_70050/figures
 
@@ -44,7 +44,7 @@ bash bash.sh
 
 ### Data Flow (Overview)
 1. Select a single dataset per run (`--dataset clean|noisy`) and load it (`wifi_utils.load_wifi_dataset`).
-2. If `--cv` is set, perform K-fold cross-validation (`metrics.cross_val_scores`) with `--k` folds and report fold accuracies/mean/std.
+2. If `--cv` is set, perform K-fold cross-validation (`metrics.cross_val_evaluate`) with `--k` folds and report aggregated metrics/plots.
 3. If not `--cv`, train on the full selected dataset, report training accuracy, and save figures: confusion matrix, PCA decision regions, and the tree visualization.
 
 ---
@@ -77,8 +77,9 @@ bash bash.sh
 - `confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[np.ndarray, list[int]]`
   - Returns `(cm, classes)` where `cm[i, j]` counts `true=classes[i]`, `pred=classes[j]`.
 
-- `cross_val_scores(model_factory, X: np.ndarray, y: np.ndarray, k: int = 5, seed: int = 42) -> list[float]`
-  - K-fold CV using `wifi_utils.k_fold_indices`. For each fold: `model = model_factory(); model.fit(train); score = accuracy(val)`.
+- `cross_val_evaluate(model_factory, X: np.ndarray, y: np.ndarray, k: int = 10, seed: int = 42) -> dict`
+  - K-fold CV with aggregated metrics. Returns a dictionary:
+    - `mean_confusion_matrix`, `mean_accuracy`, `mean_precision`, `mean_recall`, `mean_f1`.
 
 ### visualize.py
 
@@ -92,7 +93,7 @@ bash bash.sh
   - Reduces to 2D with PCA; approximates inverse mapping to plot decision regions and samples overlay. `predict_fn` is a callable like `model.predict`.
 
 - `plot_tree(root, out_path: Path) -> None`
-  - Simple hierarchical drawing of the trained tree using `Node` attributes (`feature`, `threshold`, `prediction`).
+  - Simple hierarchical drawing of the trained tree using `Node` attributes (`feature`, `threshold`, `prediction`). Split rule is `<= threshold`.
 
 ### wifi_utils.py
 
@@ -112,11 +113,20 @@ bash bash.sh
   - `--clean`: path to clean dataset (default `wifi_db/clean_dataset.txt`)
   - `--noisy`: path to noisy dataset (default `wifi_db/noisy_dataset.txt`)
   - `--dataset {clean,noisy}`: which dataset to use for this run (default `clean`)
-  - `--cv`: enable K-fold cross-validation (report fold scores and mean/std)
+  - `--cv`: enable K-fold cross-validation (aggregated metrics and plots)
   - `--k`: number of folds for cross-validation (default `10`)
+  - `--prune-cv`: run pruning evaluation and save pruned visualizations
   - `--outdir`: figures output directory (default `figures`)
 
-- Outputs when training on full dataset: confusion matrices, PCA decision regions, and `tree.png`.
+- Outputs when training on full dataset:
+  - Confusion matrices: `cm_{clean|noisy}_counts.png`, `cm_{clean|noisy}_normalized.png`
+  - PCA decision regions: `pca_regions_{clean|noisy}.png`
+  - Tree visualization: `tree.png`
+  - Pruned model demo: `cm_{*}_pruned_counts.png`, `cm_{*}_pruned_normalized.png`, `pca_regions_{*}_pruned.png`, `tree_{*}_pruned.png`
+
+- Outputs when running cross-validation (`--cv`):
+  - Aggregated confusion matrix figures: `cv_cm_{clean|noisy}_counts.png`, `cv_cm_{clean|noisy}_normalized.png`
+  - Representative full-data tree image: `tree_{clean|noisy}_cv.png`
 
 ---
 
@@ -125,5 +135,5 @@ bash bash.sh
 - Reproducibility: CV splitting uses the provided `seed` for shuffling.
 - Avoid training with empty arrays; functions validate shapes where necessary.
 - `plot_pca_scatter_with_regions` approximates decision regions via PCA back-projection; interpret qualitatively.
-- Coursework compliance: Uses `numpy`, `matplotlib`, and standard Python libraries as required.
+- Coursework compliance: Implementation uses `numpy`, `matplotlib`, and standard Python libraries. `requirements.txt` includes `scipy` for environment convenience, but the code does not require it.
 
