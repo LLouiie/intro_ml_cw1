@@ -12,6 +12,7 @@ python For_70050/main.py \
   --clean "For_70050/wifi_db/clean_dataset.txt" \
   --noisy "For_70050/wifi_db/noisy_dataset.txt" \
   --dataset clean \
+  --prune-cv \
   --cv --k 10 \
   --outdir "For_70050/figures"
 

@@ -75,6 +75,7 @@ def main() -> None:
         plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}_counts.png", normalize=False)
         plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}_normalized.png", normalize=True)
 
+
         # Also train a representative model on full data to save a tree image for CV runs
         cv_model = DecisionTreeClassifier()
         cv_model.fit(data.features, data.labels)
