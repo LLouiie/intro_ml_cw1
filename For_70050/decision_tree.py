@@ -103,6 +103,9 @@ class Node:
     left: Optional["Node"] = None  # Left child node
     right: Optional["Node"] = None  # Right child node
     prediction: Optional[int] = None  # Predicted class (for leaf nodes)
+    # Training distribution at this node (used for pruning majority vote)
+    classes: Optional[np.ndarray] = None  # Unique class labels seen at this node during training
+    class_counts: Optional[np.ndarray] = None  # Counts aligned with classes
     
    
 
@@ -201,10 +204,14 @@ class DecisionTreeClassifier:
         node = Node()
         num_features = X.shape[1]
 
+        # Store training distribution at this node (used for pruning majority vote)
+        values, counts = np.unique(y, return_counts=True)
+        node.classes = values.astype(int)
+        node.class_counts = counts.astype(np.int64)
+
         # Base case: all samples have the same label (leaf node)
-        unique_labels = np.unique(y)
-        if len(unique_labels) == 1:
-            node.prediction = int(unique_labels[0])
+        if len(values) == 1:
+            node.prediction = int(values[0])
             return node, depth
 
         # Find best split across all features
@@ -315,8 +322,8 @@ class DecisionTreeClassifier:
         # Now check if current node can be pruned
         # Node can be pruned if it's directly connected to two leaves
         if self._is_leaf(node.left) and self._is_leaf(node.right):
-            # Calculate pruned class from the two leaf predictions
-            pruned_pred = self._choose_leaf_prediction(node.left, node.right)
+            # Choose pruned class by majority vote using training distribution at this node
+            pruned_pred = self._majority_label_from_node(node)
             
             # Store current state
             original_pred = node.prediction
@@ -356,24 +363,20 @@ class DecisionTreeClassifier:
                 return True
             
         return pruned_left or pruned_right
-    
-    def _choose_leaf_prediction(self, left: Node, right: Node) -> int:
-        """
-        Select the predicted class when merging two leaf nodes during pruning.
 
-        If both leaves have the same prediction, return that class. If they differ, return the left leaf's prediction (arbitrary tie-break).
+    def _majority_label_from_node(self, node: Node) -> int:
+        """
+        Return the majority class at a node based on its stored training distribution.
 
         Args:
-            left (Node): Left leaf node.
-            right (Node): Right leaf node.
+            node: The node whose training distribution to use
 
         Returns:
-            int: Chosen class label for the merged leaf.
+            int: Majority class label
         """
-        if left.prediction == right.prediction:
-            return left.prediction
-        # If different, always return left prediction
-        return left.prediction
+        assert node.classes is not None and node.class_counts is not None
+        majority_idx = int(np.argmax(node.class_counts))
+        return int(node.classes[majority_idx])
     
     def _is_leaf(self, node: Optional[Node]) -> bool:
         """
