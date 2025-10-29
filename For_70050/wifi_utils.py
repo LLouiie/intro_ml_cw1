@@ -6,14 +6,37 @@ import numpy as np
 
 @dataclass
 class WiFiDataset:
+    """
+    Container for a WiFi localization dataset.
+
+    Attributes:
+        features (np.ndarray): Feature matrix of shape (n_samples, n_features).
+        labels (np.ndarray): Label array of shape (n_samples,).
+    """
     features: np.ndarray  # shape (n_samples, n_features)
     labels: np.ndarray    # shape (n_samples,)
 
 
 def load_wifi_dataset(path: str) -> WiFiDataset:
     """
-    Load WiFi dataset where rows are tab- or space-separated values.
-    The last column is an integer label (room number), and all others are continuous features.
+    Load a WiFi dataset from text files.
+
+    Each row should represent one sample:
+    - All columns except the last are continuous features.
+    - The last column is an integer label representing the room number.
+
+    Args:
+        path (str): Path to the dataset file.
+
+    Returns:
+        WiFiDataset: 
+            A dataclass containing:
+            - features (np.ndarray): Continuous features of shape (n_samples, n_features).
+            - labels (np.ndarray): Integer class labels of shape (n_samples,).
+
+    Raises:
+        ValueError: If the dataset has fewer than 2 columns (needs at least one feature and one label),
+            or if it contains NaN values.
     """
     try:
         data = np.loadtxt(path, delimiter="\t")
@@ -37,8 +60,23 @@ def load_wifi_dataset(path: str) -> WiFiDataset:
 
 def k_fold_indices(n_samples: int, k: int = 10, seed: int = 42) -> List[Tuple[np.ndarray, np.ndarray]]:
     """
-    Generate k-fold train/test index splits.
-    Returns a list of (train_indices, test_indices) tuples.
+    Generate deterministic k-fold train/test splits for cross-validation.
+
+    Randomly shuffles all sample indices using the given seed, then partitions them into k folds.
+    Each fold is used once as the test set while the remaining folds form the training set.
+
+    Args:
+        n_samples (int): Total number of samples in the dataset.
+        k (int, optional): Number of folds for cross-validation. Defaults to 10.
+        seed (int, optional): Random seed for reproducibility. Defaults to 42.
+
+    Returns:
+        List[Tuple[np.ndarray, np.ndarray]]: 
+            A list of length k, where each element is a tuple:
+            (train_indices, test_indices), both 1D NumPy arrays of integers.
+
+    Raises:
+        ValueError: If k < 2, or if n_samples < k.
     """
     if k < 2:
         raise ValueError("k must be >= 2")
