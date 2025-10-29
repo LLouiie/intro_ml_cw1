@@ -6,6 +6,9 @@ from wifi_utils import k_fold_indices
 
 
 def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """
+    Compute the classification accuracy between true and predicted labels.
+    """
     if y_true.shape != y_pred.shape:
         raise ValueError("Shapes of y_true and y_pred must match")
     if y_true.size == 0:
@@ -14,6 +17,9 @@ def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 
 def confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[np.ndarray, List[int]]:
+    """
+    Compute the confusion matrix for multi-class classification.
+    """
     classes = np.unique(np.concatenate([y_true, y_pred]))
     class_to_idx = {c: i for i, c in enumerate(classes)}
     m = len(classes)
@@ -68,8 +74,28 @@ def cross_val_scores(model_factory, X: np.ndarray, y: np.ndarray, k: int = 5, se
     for train_idx, val_idx in k_fold_indices(len(y), k=k, seed=seed):
         model = model_factory()
         model.fit(X[train_idx], y[train_idx])
-        y_pred = model.predict(X[val_idx])
-        scores.append(accuracy(y[val_idx], y_pred))
-    return scores
+        y_pred = model.predict(X[test_idx])
+
+        res = evaluate(y[test_idx], y_pred)
+        cms.append(res["confusion_matrix"])
+        accuracies.append(res["accuracy"])
+        precisions.append(res["precision"])
+        recalls.append(res["recall"])
+        f1s.append(res["f1"])
+
+    mean_cm = np.sum(cms, axis=0)  
+    mean_acc = float(np.mean(accuracies))
+    mean_precision = np.mean(precisions, axis=0)
+    mean_recall = np.mean(recalls, axis=0)
+    mean_f1 = np.mean(f1s, axis=0)
+
+    return {
+        "mean_confusion_matrix": mean_cm,
+        "mean_accuracy": mean_acc,
+        "mean_precision": mean_precision,
+        "mean_recall": mean_recall,
+        "mean_f1": mean_f1,
+    }
+
 
 
