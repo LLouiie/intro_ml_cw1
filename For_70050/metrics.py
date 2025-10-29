@@ -29,46 +29,6 @@ def confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[np.ndarray
     return cm, list(map(int, classes.tolist()))
 
 
-def recall_precision_f1(cm: np.ndarray, classes: List[int]) -> Tuple[Dict[int, float], Dict[int, float], Dict[int, float]]:
-    """
-    Calculate recall, precision, and F1 for each class from confusion matrix.
-    
-    Args:
-        cm: Confusion matrix (n_classes x n_classes)
-        classes: List of class labels
-    
-    Returns:
-        recall_dict, precision_dict, f1_dict: Dictionaries mapping class -> metric
-    """
-    n_classes = len(classes)
-    recall_dict = {}
-    precision_dict = {}
-    f1_dict = {}
-    
-    for i, cls in enumerate(classes):
-        # True positives: cm[i, i]
-        # False negatives: sum of row i excluding diagonal
-        # False positives: sum of column i excluding diagonal
-        
-        tp = cm[i, i]
-        fn = cm[i, :].sum() - tp
-        fp = cm[:, i].sum() - tp
-        
-        # Recall = TP / (TP + FN)
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        recall_dict[cls] = float(recall)
-        
-        # Precision = TP / (TP + FP)
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        precision_dict[cls] = float(precision)
-        
-        # F1 = 2 * (precision * recall) / (precision + recall)
-        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
-        f1_dict[cls] = float(f1)
-    
-    return recall_dict, precision_dict, f1_dict
-
-
 def precision_recall_f1(cm: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute per-class precision, recall, and F1 scores from confusion matrix.
