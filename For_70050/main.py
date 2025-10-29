@@ -77,7 +77,7 @@ def main() -> None:
         classes = list(map(int, np.unique(data.labels).astype(int)))
 
         mean_acc = results["mean_accuracy"]
-        mean_cm = results["mean_confusion_matrix"]    # Combined confusion matrix (sum of all folds)
+        mean_cm = results["mean_confusion_matrix"] / args.k    # Mean confusion matrix across folds
         per_prec = results["mean_precision"]          # Mean per-class precision across folds
         per_rec = results["mean_recall"]              # Mean per-class recall across folds
         per_f1 = results["mean_f1"]                   # Mean per-class F1 across folds
@@ -87,7 +87,7 @@ def main() -> None:
         print(f"Dataset: {selected_name}")
         print(f"{args.k}-fold Mean Accuracy: {mean_acc:.4f}")
         np.set_printoptions(linewidth=120, suppress=True)
-        print("Accumulated Confusion Matrix over all test folds (rows=true, cols=pred):")
+        print("Mean Confusion Matrix across folds (rows=true, cols=pred):")
         print(mean_cm)
         print("Per-class Precision:", np.round(per_prec, 4))
         print("Per-class Recall   :", np.round(per_rec, 4))
