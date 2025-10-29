@@ -1,7 +1,6 @@
 """
 Pruning evaluation module for Decision Tree Coursework.
 Implements nested cross-validation for evaluating pruned trees.
-hh
 """
 
 from pathlib import Path
