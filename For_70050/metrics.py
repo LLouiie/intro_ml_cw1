@@ -69,34 +69,6 @@ def recall_precision_f1(cm: np.ndarray, classes: List[int]) -> Tuple[Dict[int, f
     return recall_dict, precision_dict, f1_dict
 
 
-def cross_val_scores(model_factory, X: np.ndarray, y: np.ndarray, k: int = 5, seed: int = 42) -> List[float]:
-    scores: List[float] = []
-    for train_idx, val_idx in k_fold_indices(len(y), k=k, seed=seed):
-        model = model_factory()
-        model.fit(X[train_idx], y[train_idx])
-        y_pred = model.predict(X[test_idx])
-
-        res = evaluate(y[test_idx], y_pred)
-        cms.append(res["confusion_matrix"])
-        accuracies.append(res["accuracy"])
-        precisions.append(res["precision"])
-        recalls.append(res["recall"])
-        f1s.append(res["f1"])
-
-    mean_cm = np.sum(cms, axis=0)  
-    mean_acc = float(np.mean(accuracies))
-    mean_precision = np.mean(precisions, axis=0)
-    mean_recall = np.mean(recalls, axis=0)
-    mean_f1 = np.mean(f1s, axis=0)
-
-    return {
-        "mean_confusion_matrix": mean_cm,
-        "mean_accuracy": mean_acc,
-        "mean_precision": mean_precision,
-        "mean_recall": mean_recall,
-        "mean_f1": mean_f1,
-    }
-
 def precision_recall_f1(cm: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute per-class precision, recall, and F1 scores from confusion matrix.
