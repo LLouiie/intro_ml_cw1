@@ -18,6 +18,7 @@ def best_threshold_for_feature(X_col: np.ndarray, y: np.ndarray) -> Tuple[float,
     """
     Returns (best_gain, threshold)
     Threshold splits: left <= t, right > t
+    hello
     """
     # Sort by feature values
     order = np.argsort(X_col)
@@ -50,6 +51,7 @@ def best_threshold_for_feature(X_col: np.ndarray, y: np.ndarray) -> Tuple[float,
         right_counts = total_counts - left_counts
         left_n = i + 1
         right_n = n - left_n
+        
         # Weighted entropy
         def H_from_counts(counts: np.ndarray) -> float:
             total = counts.sum()
