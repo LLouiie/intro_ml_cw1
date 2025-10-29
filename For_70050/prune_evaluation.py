@@ -12,7 +12,7 @@ def nested_cv_evaluate_pruned(
     X: np.ndarray,
     y: np.ndarray,
     outer_k: int = 10,
-    inner_k: int = 9,
+    inner_k: int = 10,
     seed: int = 42
 ) -> Tuple[List[float], List[np.ndarray], List[List[int]], List[int], List[int]]:
     """
@@ -159,7 +159,7 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
 
         # Run nested cross-validation evaluation
         all_accs, all_cms, all_classes, depths_before, depths_after = nested_cv_evaluate_pruned(
-            dataset.features, dataset.labels, outer_k=10, inner_k=9, seed=42
+            dataset.features, dataset.labels, outer_k=10, inner_k=10, seed=42
         )
 
         # Print summary statistics
