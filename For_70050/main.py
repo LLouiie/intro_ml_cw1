@@ -48,6 +48,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # Enforce: pruning only via CV. Treat --prune as alias to --prune-cv.
+    if getattr(args, "prune", False):
+        args.prune_cv = True
+
     # Select a single dataset for this run
     selected_name = "clean" if args.dataset == "clean" else "noisy"
     selected_path = args.clean if selected_name == "clean" else args.noisy
@@ -129,25 +133,7 @@ def main() -> None:
     if getattr(model, "root", None) is not None:
         # Keep filename consistent with coursework figure naming
         plot_tree(model.root, outdir / "tree.png")
-    
-    # Generate pruned version - all visualizations
-    print(f"\n--- Demonstrating pruning on {selected_name} dataset ---")
-    n = len(data.labels)
-    split_idx = int(0.8 * n)
-    indices = np.random.default_rng(42).permutation(n)
-    train_idx, val_idx = indices[:split_idx], indices[split_idx:]
-    
-    pruned_model = DecisionTreeClassifier()
-    pruned_model.fit(data.features[train_idx], data.labels[train_idx])
-    pruned_model.prune(data.features[val_idx], data.labels[val_idx])
-    
-    # Evaluate pruned model on full dataset
-    y_pred_pruned = pruned_model.predict(data.features)
-    acc_pruned = accuracy(data.labels, y_pred_pruned)
-    cm_pruned, classes_pruned = confusion_matrix(data.labels, y_pred_pruned)
-    
-    print(f"Pruned accuracy on full dataset: {acc_pruned:.4f}")
-    
+ 
 
 if __name__ == "__main__":
     main()
