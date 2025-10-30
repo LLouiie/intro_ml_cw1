@@ -1,139 +1,158 @@
 ## WiFi Decision Tree Coursework (For_70050)
 
-This project implements a small end-to-end pipeline to train and evaluate a Decision Tree classifier on WiFi RSSI datasets. It includes data loading utilities, cross-validation, model training, metrics, and multiple visualizations.
+This project implements a small end-to-end pipeline to train and evaluate a Decision Tree classifier on WiFi RSSI datasets, including data loading, cross-validation, metrics, and multiple visualizations. It does not use scikit-learn.
 
-**Note**: This implementation follows the coursework requirements, using only **numpy**, **matplotlib**, and standard Python libraries (no scikit-learn).
+Note: The implementation uses only `numpy`, `matplotlib`, and Python's standard library.
 
-### Quick Start
+### Layout (key locations)
+- **For_70050/wifi_db/**: dataset files (defaults: `clean_dataset.txt`, `noisy_dataset.txt`)
+- **For_70050/figures/**: output figures
+- **For_70050/main.py**: CLI entry (dataset paths are provided via arguments)
+- **run.sh**: convenience commands (you can edit dataset paths here)
 
+### Environment & install
 ```bash
-# (optional) create and activate a virtualenv
+# optional: create a virtual environment
 python -m venv .venv && source .venv/bin/activate
 
 # install dependencies
 pip install -r For_70050/requirements.txt
-
-# Output figures will be saved under For_70050/figures
-
-# 1) Train on the full clean dataset (saves tree.png and other figures)
-python For_70050/main.py \
-  --clean For_70050/wifi_db/clean_dataset.txt \
-  --noisy For_70050/wifi_db/noisy_dataset.txt \
-  --dataset clean \
-  --outdir For_70050/figures
-
-# 2) 10-fold cross-validation on the clean dataset
-python For_70050/main.py \
-  --clean For_70050/wifi_db/clean_dataset.txt \
-  --noisy For_70050/wifi_db/noisy_dataset.txt \
-  --dataset clean \
-  --cv --k 10 \
-  --outdir For_70050/figures
-
-# 3) 10-fold cross-validation on the noisy dataset
-python For_70050/main.py \
-  --clean For_70050/wifi_db/clean_dataset.txt \
-  --noisy For_70050/wifi_db/noisy_dataset.txt \
-  --dataset noisy \
-  --cv --k 10 \
-  --outdir For_70050/figures
-
-# Or run the helper script (edit dataset paths inside if needed)
-bash bash.sh
 ```
 
-### Data Flow (Overview)
-1. Select a single dataset per run (`--dataset clean|noisy`) and load it (`wifi_utils.load_wifi_dataset`).
-2. If `--cv` is set, perform K-fold cross-validation (`metrics.cross_val_evaluate`) with `--k` folds and report aggregated metrics/plots.
-3. If not `--cv`, train on the full selected dataset, report training accuracy, and save figures: confusion matrix, PCA decision regions, and the tree visualization.
+### Quick Start
+```bash
+# 1) Train on full clean dataset (saves tree.png and other figures)
+python For_70050/main.py \
+  --clean "For_70050/wifi_db/clean_dataset.txt" \
+  --noisy "For_70050/wifi_db/noisy_dataset.txt" \
+  --dataset clean \
+  --outdir "For_70050/figures"
+
+# 2) 10-fold cross-validation on clean dataset
+python For_70050/main.py \
+  --clean "For_70050/wifi_db/clean_dataset.txt" \
+  --noisy "For_70050/wifi_db/noisy_dataset.txt" \
+  --dataset clean \
+  --cv --k 10 \
+  --outdir "For_70050/figures"
+
+# 3) 10-fold cross-validation on noisy dataset
+python For_70050/main.py \
+  --clean "For_70050/wifi_db/clean_dataset.txt" \
+  --noisy "For_70050/wifi_db/noisy_dataset.txt" \
+  --dataset noisy \
+  --cv --k 10 \
+  --outdir "For_70050/figures"
+
+# 4) Nested 10-fold cross-validation on clean dataset
+python For_70050/main.py \
+  --clean "For_70050/wifi_db/clean_dataset.txt" \
+  --noisy "For_70050/wifi_db/noisy_dataset.txt" \
+  --dataset clean \
+  --prune-cv \
+  --cv --k 10 \
+  --outdir "For_70050/figures"
+
+# 5) Nested 10-fold cross-validation on noisy dataset
+python For_70050/main.py \
+  --clean "For_70050/wifi_db/clean_dataset.txt" \
+  --noisy "For_70050/wifi_db/noisy_dataset.txt" \
+  --dataset noisy \
+  --prune-cv \
+  --cv --k 10 \
+  --outdir "For_70050/figures"
+
+# Or run the helper script (you can edit dataset paths inside)
+bash run.sh
+```
 
 ---
 
-## Module Reference
+## Where to change dataset paths (for marker to import new data)
 
-### decision_tree.py
+### Option A: Pass paths via CLI arguments 
+Use this template and replace placeholders with your filenames:
 
-- `entropy(labels: np.ndarray) -> float`
-  - Shannon entropy of integer class labels. Returns 0.0 for empty arrays.
+Template:
+```bash
+python For_70050/main.py \
+  --clean "<PATH_TO_CLEAN_TXT>" \
+  --noisy "<PATH_TO_NOISY_TXT>" \
+  --dataset clean \
+  --outdir "For_70050/figures"
+```
 
-- `best_threshold_for_feature(X_col: np.ndarray, y: np.ndarray) -> tuple[float, float]`
-  - Finds the threshold for a single feature column that maximizes information gain.
-  - Returns `(best_gain, threshold)`. Split rule is `left <= threshold`, `right > threshold`.
+Notes:
+- To use the noisy dataset instead, set `--dataset noisy`.
+- You can pass both paths every time; only the one matching `--dataset` is used.
 
-- `@dataclass Node`
-  - Fields: `feature: int | None`, `threshold: float | None`, `left: Node | None`, `right: Node | None`, `prediction: int | None`.
+Absolute/relative path examples:
+```bash
+# absolute paths
+python For_70050/main.py \
+  --clean "/Users/marker/Desktop/data/my_clean.txt" \
+  --noisy "/Users/marker/Desktop/data/my_noisy.txt" \
+  --dataset clean \
+  --outdir "For_70050/figures"
 
-- `class DecisionTreeClassifier`
-  - `__init__()` → sets `root: Node | None = None`.
-  - `fit(X: np.ndarray, y: np.ndarray) -> DecisionTreeClassifier` → builds a binary tree using greedy information gain splits.
-  - `predict(X: np.ndarray) -> np.ndarray` → traverses the tree for each row; returns integer class predictions.
-  - Internal: `_build_tree(X: np.ndarray, y: np.ndarray, depth: int) -> tuple[Node, int]` returns `(node, actual_max_depth)`; follows the PDF algorithm (left-then-right recursion).
+# relative to your current working directory
+python For_70050/main.py \
+  --clean "../data/my_clean.txt" \
+  --noisy "../data/my_noisy.txt" \
+  --dataset noisy \
+  --outdir "For_70050/figures"
+```
 
-### metrics.py
 
-- `accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float`
-  - Mean of correct predictions. Requires matching shapes.
 
-- `confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[np.ndarray, list[int]]`
-  - Returns `(cm, classes)` where `cm[i, j]` counts `true=classes[i]`, `pred=classes[j]`.
+### Defaults (for reference; CLI overrides them)
+`main.py` provides default relative paths (relative to `For_70050/`):
 
-- `cross_val_evaluate(model_factory, X: np.ndarray, y: np.ndarray, k: int = 10, seed: int = 42) -> dict`
-  - K-fold CV with aggregated metrics. Returns a dictionary:
-    - `mean_confusion_matrix`, `mean_accuracy`, `mean_precision`, `mean_recall`, `mean_f1`.
+```33:35:/Applications/有用的/Code/ic/intro_ml_cw1/For_70050/main.py
+parser.add_argument("--clean", type=str, default="wifi_db/clean_dataset.txt")
+parser.add_argument("--noisy", type=str, default="wifi_db/noisy_dataset.txt")
+```
 
-### visualize.py
+If you omit `--clean/--noisy`, the program uses these defaults. For clarity and grading, prefer explicitly setting paths via CLI or `run.sh`.
 
-- `plot_confusion_matrix(cm: np.ndarray, classes: list[int], out_path: Path, normalize: bool = False) -> None`
-  - Saves confusion matrix heatmap. If `normalize=True`, rows are normalized.
-
-- `pca_project(X: np.ndarray, n_components: int = 2) -> np.ndarray`
-  - PCA via SVD using `numpy.linalg.svd` (no scipy). Returns projected `X` in lower dimensions.
-
-- `plot_pca_scatter_with_regions(X: np.ndarray, y: np.ndarray, predict_fn, out_path: Path, h: float = 0.5) -> None`
-  - Reduces to 2D with PCA; approximates inverse mapping to plot decision regions and samples overlay. `predict_fn` is a callable like `model.predict`.
-
-- `plot_tree(root, out_path: Path) -> None`
-  - Simple hierarchical drawing of the trained tree using `Node` attributes (`feature`, `threshold`, `prediction`). Split rule is `<= threshold`.
-
-### wifi_utils.py
-
-- `@dataclass WiFiDataset`
-  - `features: np.ndarray` with shape `(n_samples, n_features)`
-  - `labels: np.ndarray` with shape `(n_samples,)`
-
-- `load_wifi_dataset(path: str) -> WiFiDataset`
-  - Loads tab- or space-delimited file, last column is integer label, others are float features.
-
-- `k_fold_indices(n_samples: int, k: int, seed: int = 42) -> list[tuple[np.ndarray, np.ndarray]]`
-  - Returns list of `(train_idx, val_idx)` splits. Requires `k >= 2`.
-
-### main.py
-
-- CLI arguments:
-  - `--clean`: path to clean dataset (default `wifi_db/clean_dataset.txt`)
-  - `--noisy`: path to noisy dataset (default `wifi_db/noisy_dataset.txt`)
-  - `--dataset {clean,noisy}`: which dataset to use for this run (default `clean`)
-  - `--cv`: enable K-fold cross-validation (aggregated metrics and plots)
-  - `--k`: number of folds for cross-validation (default `10`)
-  - `--prune-cv`: run pruning evaluation and save pruned visualizations
-  - `--outdir`: figures output directory (default `figures`)
-
-- Outputs when training on full dataset:
-  - Confusion matrices: `cm_{clean|noisy}_counts.png`, `cm_{clean|noisy}_normalized.png`
-  - PCA decision regions: `pca_regions_{clean|noisy}.png`
-  - Tree visualization: `tree.png`
-  - Pruned model demo: `cm_{*}_pruned_counts.png`, `cm_{*}_pruned_normalized.png`, `pca_regions_{*}_pruned.png`, `tree_{*}_pruned.png`
-
-- Outputs when running cross-validation (`--cv`):
-  - Aggregated confusion matrix figures: `cv_cm_{clean|noisy}_counts.png`, `cv_cm_{clean|noisy}_normalized.png`
-  - Representative full-data tree image: `tree_{clean|noisy}_cv.png`
+Pruning CV note: when using `--prune-cv`, both paths must be valid (both datasets are loaded regardless of `--dataset`):
+```64:67:/Applications/有用的/Code/ic/intro_ml_cw1/For_70050/main.py
+clean_dataset = load_wifi_dataset(args.clean)
+noisy_dataset = load_wifi_dataset(args.noisy)
+run_prune_evaluation(clean_dataset, noisy_dataset, outdir, only=selected_name)
+```
 
 ---
 
-## Tips & Notes
-- Ensure labels are integers; features should be numeric (float-compatible).
-- Reproducibility: CV splitting uses the provided `seed` for shuffling.
-- Avoid training with empty arrays; functions validate shapes where necessary.
-- `plot_pca_scatter_with_regions` approximates decision regions via PCA back-projection; interpret qualitatively.
-- Coursework compliance: Implementation uses `numpy`, `matplotlib`, and standard Python libraries. `requirements.txt` includes `scipy` for environment convenience, but the code does not require it.
+## Data format
+- Text file, whitespace-delimited (spaces or tabs)
+- Last column is the integer class label; preceding columns are float features
 
+---
+
+## Workflow overview
+1. Select dataset with `--dataset clean|noisy` and load it via `wifi_utils.load_wifi_dataset`
+2. If `--cv` is set, run K-fold cross-validation (`metrics.cross_val_evaluate`) and save aggregated metrics/plots
+3. Otherwise, train on full data and save confusion matrices, PCA decision regions, and the tree visualization
+
+---
+
+## Key modules (at a glance)
+- **decision_tree.py**: binary tree with information gain splits (`DecisionTreeClassifier`)
+- **metrics.py**: accuracy, confusion matrix, K-fold evaluation
+- **visualize.py**: confusion matrix plots, PCA projection/decision regions, tree drawing
+- **wifi_utils.py**: dataset loader, K-fold indices
+- **main.py**: CLI entry and training/evaluation logic
+
+---
+
+## Outputs
+- Full-data training: `cm_{clean|noisy}_counts.png`, `cm_{clean|noisy}_normalized.png`, `pca_regions_{clean|noisy}.png`, `tree.png`
+- Cross-validation: `cv_cm_{clean|noisy}_counts.png`, `cv_cm_{clean|noisy}_normalized.png`, `tree_{clean|noisy}_cv.png`
+
+---
+
+## Notes
+- Ensure labels are integers; features are numeric
+- CV uses a fixed random seed for reproducibility
+- PCA decision regions are an approximate back-projection; interpret qualitatively
