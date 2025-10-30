@@ -130,7 +130,7 @@ def main() -> None:
         # Keep filename consistent with coursework figure naming
         plot_tree(model.root, outdir / "tree.png")
     
-    # ADDED: Also generate pruned version - all visualizations
+    # Generate pruned version - all visualizations
     print(f"\n--- Demonstrating pruning on {selected_name} dataset ---")
     n = len(data.labels)
     split_idx = int(0.8 * n)
