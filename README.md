@@ -70,7 +70,7 @@ bash run.sh
 
 ## Where to change dataset paths (for marker to import new data)
 
-### Option A: Pass paths via CLI arguments 
+### Pass paths via CLI arguments 
 Use this template and replace placeholders with your filenames:
 
 Template:
@@ -84,7 +84,7 @@ python For_70050/main.py \
 
 Notes:
 - To use the noisy dataset instead, set `--dataset noisy`.
-- You can pass both paths every time; only the one matching `--dataset` is used.
+- You can pass both paths every time, only the one matching `--dataset` is used.
 
 Absolute/relative path examples:
 ```bash
@@ -103,56 +103,30 @@ python For_70050/main.py \
   --outdir "For_70050/figures"
 ```
 
-
-
-### Defaults (for reference; CLI overrides them)
-`main.py` provides default relative paths (relative to `For_70050/`):
-
-```33:35:/Applications/有用的/Code/ic/intro_ml_cw1/For_70050/main.py
-parser.add_argument("--clean", type=str, default="wifi_db/clean_dataset.txt")
-parser.add_argument("--noisy", type=str, default="wifi_db/noisy_dataset.txt")
-```
-
-If you omit `--clean/--noisy`, the program uses these defaults. For clarity and grading, prefer explicitly setting paths via CLI or `run.sh`.
-
-Pruning CV note: when using `--prune-cv`, both paths must be valid (both datasets are loaded regardless of `--dataset`):
-```64:67:/Applications/有用的/Code/ic/intro_ml_cw1/For_70050/main.py
-clean_dataset = load_wifi_dataset(args.clean)
-noisy_dataset = load_wifi_dataset(args.noisy)
-run_prune_evaluation(clean_dataset, noisy_dataset, outdir, only=selected_name)
-```
-
 ---
 
 ## Data format
 - Text file, whitespace-delimited (spaces or tabs)
-- Last column is the integer class label; preceding columns are float features
+- Last column is the integer class label, preceding columns are float features
 
 ---
 
 ## Workflow overview
 1. Select dataset with `--dataset clean|noisy` and load it via `wifi_utils.load_wifi_dataset`
-2. If `--cv` is set, run K-fold cross-validation (`metrics.cross_val_evaluate`) and save aggregated metrics/plots
-3. Otherwise, train on full data and save confusion matrices, PCA decision regions, and the tree visualization
+2. If `--cv` is set, run K-fold cross-validation (`metrics.cross_val_evaluate`) and save averaged metrics/plots
+3. Otherwise, train on full data and save confusion matrices, and the tree visualization
 
 ---
 
 ## Key modules (at a glance)
 - **decision_tree.py**: binary tree with information gain splits (`DecisionTreeClassifier`)
 - **metrics.py**: accuracy, confusion matrix, K-fold evaluation
-- **visualize.py**: confusion matrix plots, PCA projection/decision regions, tree drawing
+- **visualize.py**: confusion matrix plots, tree drawing
 - **wifi_utils.py**: dataset loader, K-fold indices
 - **main.py**: CLI entry and training/evaluation logic
 
 ---
 
-## Outputs
-- Full-data training: `cm_{clean|noisy}_counts.png`, `cm_{clean|noisy}_normalized.png`, `pca_regions_{clean|noisy}.png`, `tree.png`
-- Cross-validation: `cv_cm_{clean|noisy}_counts.png`, `cv_cm_{clean|noisy}_normalized.png`, `tree_{clean|noisy}_cv.png`
-
----
-
 ## Notes
-- Ensure labels are integers; features are numeric
+- Ensure labels are integers, features are numeric
 - CV uses a fixed random seed for reproducibility
-- PCA decision regions are an approximate back-projection; interpret qualitatively
