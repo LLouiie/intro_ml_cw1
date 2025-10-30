@@ -10,7 +10,6 @@ from metrics import (
 )
 from visualize import (
     plot_confusion_matrix,
-    plot_pca_scatter_with_regions,
     plot_tree,
 )
 from wifi_utils import WiFiDataset, load_wifi_dataset
@@ -18,14 +17,35 @@ from prune_evaluation import run_prune_evaluation
 
 
 def main() -> None:
+    """
+    Entry point for the WiFi Decision Tree Coursework.
+
+    This script supports three main modes:
+    1. Train and evaluate a decision tree on a single dataset (clean or noisy).
+    2. Run k-fold cross-validation to assess model performance.
+    3. Run nested cross-validation for pruning evaluation.
+
+    Command-line arguments allow switching datasets, enabling CV, and controlling output paths.
+    """
     parser = argparse.ArgumentParser(description="WiFi Decision Tree Coursework")
+   
+    # Dataset paths
     parser.add_argument("--clean", type=str, default="wifi_db/clean_dataset.txt")
     parser.add_argument("--noisy", type=str, default="wifi_db/noisy_dataset.txt")
+   
+    # Dataset selection
     parser.add_argument("--dataset", choices=["clean", "noisy"], default="clean", help="Which dataset to use for this run")
+    
+    # Evaluation modes
     parser.add_argument("--cv", action="store_true", help="Enable k-fold cross-validation instead of training on full dataset")
     parser.add_argument("--prune-cv", action="store_true", help="Run nested CV for pruned trees")
+    
+    # Cross-validation parameters
     parser.add_argument("--k", type=int, default=10, help="Number of folds for cross-validation")
+    
+    # Output directory for figures
     parser.add_argument("--outdir", type=str, default="figures")
+
     args = parser.parse_args()
 
     # Select a single dataset for this run
@@ -36,14 +56,14 @@ def main() -> None:
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    # ADDED: Handle --prune-cv mode for nested CV evaluation
+    # Nested cross-validation for pruning evaluation
     if args.prune_cv:
         clean_dataset = load_wifi_dataset(args.clean)
         noisy_dataset = load_wifi_dataset(args.noisy)
         run_prune_evaluation(clean_dataset, noisy_dataset, outdir)
         return
     
-    # ORIGINAL CODE - UNCHANGED BELOW
+    # Standard k-fold cross-validation
     if args.cv:
         results = cross_val_evaluate(
             model_factory=lambda: DecisionTreeClassifier(),
@@ -53,36 +73,39 @@ def main() -> None:
             seed=42,
         )
 
-        # Use all dataset labels to keep class order consistent across plots
+        # Ensure class order consistency across plots
         classes = list(map(int, np.unique(data.labels).astype(int)))
 
         mean_acc = results["mean_accuracy"]
-        mean_cm = results["mean_confusion_matrix"]    # Combined confusion matrix (sum of all folds)
+        mean_cm = results["mean_confusion_matrix"]    # Mean confusion matrix across folds
         per_prec = results["mean_precision"]          # Mean per-class precision across folds
         per_rec = results["mean_recall"]              # Mean per-class recall across folds
         per_f1 = results["mean_f1"]                   # Mean per-class F1 across folds
 
+
+        # Print summary statistics
         print(f"Dataset: {selected_name}")
         print(f"{args.k}-fold Mean Accuracy: {mean_acc:.4f}")
         np.set_printoptions(linewidth=120, suppress=True)
-        print("Accumulated Confusion Matrix over all test folds (rows=true, cols=pred):")
+        print("Mean Confusion Matrix across folds (rows=true, cols=pred):")
         print(mean_cm)
         print("Per-class Precision:", np.round(per_prec, 4))
         print("Per-class Recall   :", np.round(per_rec, 4))
         print("Per-class F1       :", np.round(per_f1, 4))
 
         # Plot the overall confusion matrix from cross-validation (counts & normalized)
-        plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}_counts.png", normalize=False)
+        plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}.png", normalize=False)
         plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}_normalized.png", normalize=True)
 
-        # Also train a representative model on full data to save a tree image for CV runs
+
+        # Train a representative model on full data for visualization
         cv_model = DecisionTreeClassifier()
         cv_model.fit(data.features, data.labels)
         if getattr(cv_model, "root", None) is not None:
             plot_tree(cv_model.root, outdir / f"tree_{selected_name}_cv.png")
         return
 
-    # Train on the full selected dataset and produce visualizations (ORIGINAL OUTPUT)
+    # Train on full dataset with no CV
     model = DecisionTreeClassifier()
     model.fit(data.features, data.labels)
 
@@ -90,6 +113,7 @@ def main() -> None:
     acc = accuracy(data.labels, y_pred)
     cm, classes = confusion_matrix(data.labels, y_pred)
 
+    # Print metrics
     print(f"Dataset: {selected_name}")
     print(f"Accuracy (train on full dataset): {acc:.4f}")
     print("Classes:", classes)
@@ -100,15 +124,6 @@ def main() -> None:
     # Visualizations for the selected dataset (ORIGINAL FILES - YOUR TEAMMATE'S OUTPUT)
     plot_confusion_matrix(cm, classes, outdir / f"cm_{selected_name}_counts.png", normalize=False)
     plot_confusion_matrix(cm, classes, outdir / f"cm_{selected_name}_normalized.png", normalize=True)
-
-    # PCA scatter with decision regions (approximate back-projection)
-    plot_pca_scatter_with_regions(
-        data.features,
-        data.labels,
-        predict_fn=model.predict,
-        out_path=outdir / f"pca_regions_{selected_name}.png",
-        h=0.8,
-    )
 
     # Plot the trained decision tree (for the full-data model)
     if getattr(model, "root", None) is not None:
@@ -136,14 +151,7 @@ def main() -> None:
     # Generate all pruned visualizations
     plot_confusion_matrix(cm_pruned, classes_pruned, outdir / f"cm_{selected_name}_pruned_counts.png", normalize=False)
     plot_confusion_matrix(cm_pruned, classes_pruned, outdir / f"cm_{selected_name}_pruned_normalized.png", normalize=True)
-    
-    plot_pca_scatter_with_regions(
-        data.features,
-        data.labels,
-        predict_fn=pruned_model.predict,
-        out_path=outdir / f"pca_regions_{selected_name}_pruned.png",
-        h=0.8,
-    )
+
     
     plot_tree(pruned_model.root, outdir / f"tree_{selected_name}_pruned.png")
     print(f"Saved all pruned visualizations for {selected_name} dataset")
