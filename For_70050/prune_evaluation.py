@@ -93,9 +93,9 @@ def nested_cv_evaluate_pruned(
     return all_test_accuracies, all_confusion_matrices, all_classes, all_depths_before, all_depths_after
 
 
-def aggregate_confusion_matrices(all_cms: List[np.ndarray], all_classes: List[List[int]]) -> Tuple[np.ndarray, List[int]]:
+def average_confusion_matrices(all_cms: List[np.ndarray], all_classes: List[List[int]]) -> Tuple[np.ndarray, List[int]]:
     """
-    Aggregate multiple confusion matrices into a single global matrix.
+    Average multiple confusion matrices into a single global matrix.
 
     Handles class index alignment across different folds, as class sets may differ
     between individual models due to stratified or unbalanced splits.
@@ -106,7 +106,7 @@ def aggregate_confusion_matrices(all_cms: List[np.ndarray], all_classes: List[Li
 
     Returns:
         Tuple[np.ndarray, List[int]]:
-            - np.ndarray: Aggregated confusion matrix across all folds.
+            - np.ndarray: AAveraged confusion matrix across all folds.
             - List[int]: Sorted list of unique class labels.
     """
     # Collect all unique class labels across folds
@@ -117,8 +117,8 @@ def aggregate_confusion_matrices(all_cms: List[np.ndarray], all_classes: List[Li
     class_to_idx = {c: i for i, c in enumerate(unique_classes)}
     n_classes = len(unique_classes)
 
-    # Initialize empty aggregated confusion matrix
-    aggregated_cm = np.zeros((n_classes, n_classes), dtype=int)
+    # Initialize empty sum confusion matrix
+    sum_cm = np.zeros((n_classes, n_classes), dtype=float)
 
     # Map local class indices to global indices and accumulate counts
     for cm, classes in zip(all_cms, all_classes):
@@ -127,9 +127,12 @@ def aggregate_confusion_matrices(all_cms: List[np.ndarray], all_classes: List[Li
             for local_pred_idx, pred_cls in enumerate(classes):
                 global_true_idx = local_to_global[true_cls]
                 global_pred_idx = local_to_global[pred_cls]
-                aggregated_cm[global_true_idx, global_pred_idx] += cm[local_true_idx, local_pred_idx]
+                sum_cm[global_true_idx, global_pred_idx] += cm[local_true_idx, local_pred_idx]
+    
+    # Average the confusion matrix
+    average_cm = sum_cm / len(all_cms)
 
-    return aggregated_cm, unique_classes
+    return average_cm, unique_classes
 
 
 def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
@@ -170,8 +173,8 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
         print(f"Min: {np.min(all_accs):.4f}, Max: {np.max(all_accs):.4f}")
 
         # Aggregate confusion matrices from all folds
-        agg_cm, classes = aggregate_confusion_matrices(all_cms, all_classes)
-        print(f"\nAggregated confusion matrix:")
+        agg_cm, classes = average_confusion_matrices(all_cms, all_classes)
+        print(f"\nAveraged confusion matrix:")
         print(agg_cm)
 
         # Compute recall, precision, and F1 metrics
@@ -183,8 +186,8 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
                   f"Precision={precision_dict[cls]:.4f}, F1={f1_dict[cls]:.4f}")
 
         # Save confusion matrix plots
-        plot_confusion_matrix(agg_cm/90, classes, outdir / f"cm_{dataset_name}_pruned.png", normalize=False)
-        plot_confusion_matrix(agg_cm/90, classes, outdir / f"cm_{dataset_name}_pruned_normalized.png", normalize=True)
+        plot_confusion_matrix(agg_cm, classes, outdir / f"cm_{dataset_name}_pruned.png", normalize=False)
+        plot_confusion_matrix(agg_cm, classes, outdir / f"cm_{dataset_name}_pruned_normalized.png", normalize=True)
 
         # Analyze and display tree depth reduction before/after pruning
         print(f"\nDepth Analysis for {dataset_name}:")
