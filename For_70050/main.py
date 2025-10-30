@@ -64,7 +64,7 @@ def main() -> None:
     if args.prune_cv:
         clean_dataset = load_wifi_dataset(args.clean)
         noisy_dataset = load_wifi_dataset(args.noisy)
-        run_prune_evaluation(clean_dataset, noisy_dataset, outdir)
+        run_prune_evaluation(clean_dataset, noisy_dataset, outdir, only=selected_name)
         return
     
     # Standard k-fold cross-validation

@@ -135,7 +135,7 @@ def average_confusion_matrices(all_cms: List[np.ndarray], all_classes: List[List
     return average_cm, unique_classes
 
 
-def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
+def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path, only: str = None):
     """
     Run nested cross-validation for pruned trees on both clean and noisy datasets.
 
@@ -155,7 +155,13 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
     """
     datasets = {"clean": clean_dataset, "noisy": noisy_dataset}
 
-    for dataset_name, dataset in datasets.items():
+    # Select which datasets to run
+    if only in datasets:
+        items = [(only, datasets[only])]
+    else:
+        items = list(datasets.items())
+
+    for dataset_name, dataset in items:
         print(f"\n{'='*70}")
         print(f"Running nested CV for pruned trees on {dataset_name} dataset...")
         print(f"{'='*70}")
@@ -197,11 +203,16 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
               f"min={np.min(depths_after)}, max={np.max(depths_after)}")
         print(f"  Avg reduction: {np.mean(depths_before) - np.mean(depths_after):.2f}")
 
-    # Visualize example pruned trees for both datasets
+    # Visualize example pruned trees for selected datasets
     print(f"\n{'='*70}")
-    print("Visualizing pruned trees for both datasets...")
+    if only in datasets:
+        viz_items = [(only, datasets[only])]
+        print(f"Visualizing pruned tree for {only} dataset...")
+    else:
+        viz_items = [("clean", clean_dataset), ("noisy", noisy_dataset)]
+        print("Visualizing pruned trees for both datasets...")
 
-    for ds_name, ds in [("clean", clean_dataset), ("noisy", noisy_dataset)]:
+    for ds_name, ds in viz_items:
         # Randomly split dataset into training and validation sets
         rng = np.random.default_rng(42)
         indices = rng.permutation(len(ds.labels))
