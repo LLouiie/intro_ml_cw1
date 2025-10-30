@@ -38,7 +38,11 @@ def plot_confusion_matrix(cm: np.ndarray, classes: list[int], out_path: Path, no
         fmt = ".2f" # Format with 2 decimal places
     else:
         data = cm
-        fmt = "d" # Integer format
+        # Use integer format only if all values are integers
+        if np.issubdtype(data.dtype, np.integer):
+            fmt = "d"
+        else:
+            fmt = ".2f"
 
     plt.figure(figsize=(5.2, 4.5))
     im = plt.imshow(data, interpolation="nearest", cmap=plt.cm.Blues)

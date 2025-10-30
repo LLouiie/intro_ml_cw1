@@ -179,7 +179,7 @@ def cross_val_evaluate(model_factory, X: np.ndarray, y: np.ndarray, k: int = 10,
 
     Returns:
         Dict[str, np.ndarray]: Dictionary of aggregated results:
-            - "mean_confusion_matrix" (np.ndarray): Sum of confusion matrices across folds.
+            - "mean_confusion_matrix" (np.ndarray): Average of confusion matrices across folds.
             - "mean_accuracy" (float): Mean accuracy across folds.
             - "mean_precision" (np.ndarray): Mean per-class precision.
             - "mean_recall" (np.ndarray): Mean per-class recall.
@@ -210,8 +210,8 @@ def cross_val_evaluate(model_factory, X: np.ndarray, y: np.ndarray, k: int = 10,
         recalls.append(res["recall"])
         f1s.append(res["f1"])
 
-    # Aggregate confusion matrices (sum counts over folds)
-    mean_cm = np.sum(cms, axis=0)
+    # Average confusion matrices
+    mean_cm = np.mean(cms, axis=0)
     # Average scalar and vector metrics
     mean_acc = float(np.mean(accuracies))
     mean_precision = np.mean(precisions, axis=0)

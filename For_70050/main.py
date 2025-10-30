@@ -77,7 +77,7 @@ def main() -> None:
         classes = list(map(int, np.unique(data.labels).astype(int)))
 
         mean_acc = results["mean_accuracy"]
-        mean_cm = results["mean_confusion_matrix"] / args.k    # Mean confusion matrix across folds
+        mean_cm = results["mean_confusion_matrix"]    # Mean confusion matrix across folds
         per_prec = results["mean_precision"]          # Mean per-class precision across folds
         per_rec = results["mean_recall"]              # Mean per-class recall across folds
         per_f1 = results["mean_f1"]                   # Mean per-class F1 across folds
@@ -94,7 +94,7 @@ def main() -> None:
         print("Per-class F1       :", np.round(per_f1, 4))
 
         # Plot the overall confusion matrix from cross-validation (counts & normalized)
-        plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}_counts.png", normalize=False)
+        plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}.png", normalize=False)
         plot_confusion_matrix(mean_cm, classes, outdir / f"cv_cm_{selected_name}_normalized.png", normalize=True)
 
 

@@ -159,7 +159,7 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
 
         # Run nested cross-validation evaluation
         all_accs, all_cms, all_classes, depths_before, depths_after = nested_cv_evaluate_pruned(
-            dataset.features, dataset.labels, outer_k=10, inner_k=10, seed=42
+            dataset.features, dataset.labels, outer_k=10, inner_k=9, seed=42
         )
 
         # Print summary statistics
@@ -183,8 +183,8 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
                   f"Precision={precision_dict[cls]:.4f}, F1={f1_dict[cls]:.4f}")
 
         # Save confusion matrix plots
-        plot_confusion_matrix(agg_cm, classes, outdir / f"cm_{dataset_name}_pruned_counts.png", normalize=False)
-        plot_confusion_matrix(agg_cm, classes, outdir / f"cm_{dataset_name}_pruned_normalized.png", normalize=True)
+        plot_confusion_matrix(agg_cm/90, classes, outdir / f"cm_{dataset_name}_pruned.png", normalize=False)
+        plot_confusion_matrix(agg_cm/90, classes, outdir / f"cm_{dataset_name}_pruned_normalized.png", normalize=True)
 
         # Analyze and display tree depth reduction before/after pruning
         print(f"\nDepth Analysis for {dataset_name}:")
