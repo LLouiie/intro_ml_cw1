@@ -148,14 +148,6 @@ def main() -> None:
     
     print(f"Pruned accuracy on full dataset: {acc_pruned:.4f}")
     
-    # Generate all pruned visualizations
-    plot_confusion_matrix(cm_pruned, classes_pruned, outdir / f"cm_{selected_name}_pruned_counts.png", normalize=False)
-    plot_confusion_matrix(cm_pruned, classes_pruned, outdir / f"cm_{selected_name}_pruned_normalized.png", normalize=True)
-
-    
-    plot_tree(pruned_model.root, outdir / f"tree_{selected_name}_pruned.png")
-    print(f"Saved all pruned visualizations for {selected_name} dataset")
-
 
 if __name__ == "__main__":
     main()
