@@ -172,7 +172,7 @@ def run_prune_evaluation(clean_dataset, noisy_dataset, outdir: Path):
         print(f"Std accuracy: {np.std(all_accs):.4f}")
         print(f"Min: {np.min(all_accs):.4f}, Max: {np.max(all_accs):.4f}")
 
-        # Aggregate confusion matrices from all folds
+        # Averaged confusion matrices from all folds
         agg_cm, classes = average_confusion_matrices(all_cms, all_classes)
         print(f"\nAveraged confusion matrix:")
         print(agg_cm)
