@@ -84,7 +84,6 @@ Notes:
 - You can pass both paths every time, only the one matching `--dataset` is used.
 
 ```
-
 ## Data format
 - Text file, whitespace-delimited (spaces or tabs)
 - Last column is the integer class label, preceding columns are float features
